@@ -57,6 +57,21 @@ FORM fetch_data.
     LEFT JOIN makt ON mara~matnr = makt~matnr
     WHERE mara~spras = p_spras
     GROUP BY mara~matnr, mara~brgew, mara~gewei, makt~maktx.
+ENDFORM.
+
+
+*&---------------------------------------------------------------------*
+*&      Form  display_data
+*&---------------------------------------------------------------------*
+FORM display_ALV.
+    CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+      EXPORTING
+        i_callback_program = g_repid
+        it_fieldcat = gs_fieldcat[]
+        i_save                  = 'A'
+      TABLES
+        t_outtab = gt_main.
+ENDFORM.
 
 
 
