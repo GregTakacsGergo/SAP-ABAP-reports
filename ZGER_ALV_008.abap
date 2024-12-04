@@ -42,7 +42,7 @@ INITIALIZATION.
   g_repid = sy-repid.
 
   " Adatok kiválasztása
-
+ 
 START-OF-SELECTION.
   PERFORM fetch_data.
 
