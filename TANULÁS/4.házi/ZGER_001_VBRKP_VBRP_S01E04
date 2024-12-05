@@ -1,0 +1,224 @@
+*&---------------------------------------------------------------------*
+*& Report ZGER_001_VBRK_VBRP_SELECT_01
+*&---------------------------------------------------------------------*
+*& geri 2023.11.23 házi feladat S01E04
+*&---------------------------------------------------------------------*
+REPORT zger_001_vbrk_vbrp_select_01.
+
+* táblák, változók definiálasa
+TABLES: vbrk, vbrp.
+DATA it_vbrk TYPE TABLE OF vbrk.
+DATA ls_selecttable TYPE vbrk.
+DATA ls_selectsingle TYPE vbrk.
+
+* join táblák struktúra definiálása
+TYPES: BEGIN OF jointable_type,
+         vbeln TYPE vbrk-vbeln,
+         waerk TYPE vbrk-waerk,
+         vkorg TYPE vbrk-vkorg,
+         vtweg TYPE vbrk-vtweg,
+         belnr TYPE vbrk-belnr,
+         posnr TYPE vbrp-posnr,
+         vrkme TYPE vbrp-vrkme,
+         meins TYPE vbrp-meins,
+         erdat TYPE vbrp-erdat,
+       END OF jointable_type.
+TYPES: BEGIN OF jointable2_type,
+         vbeln TYPE vbrk-vbeln,
+         waerk TYPE vbrk-waerk,
+         vkorg TYPE vbrk-vkorg,
+         vtweg TYPE vbrk-vtweg,
+         belnr TYPE vbrk-belnr,
+         posnr TYPE vbrp-posnr,
+         vrkme TYPE vbrp-vrkme,
+         meins TYPE vbrp-meins,
+         erdat TYPE vbrp-erdat,
+         ean11 TYPE vbrp-ean11,
+       END OF jointable2_type.
+
+DATA jointable TYPE jointable_type.
+* itt majd a 4-es feladat szerint belsőtáblába rakjuk a struktúrát
+DATA: it_jointable2 TYPE TABLE OF jointable2_type,
+      ls_jointable2 TYPE jointable2_type.
+*data  ls_jointable3 LIKE LINE OF it_jointable2.
+
+
+PARAMETERS szam TYPE i.
+
+* szelekciós képernyő beállítása
+SELECTION-SCREEN BEGIN OF BLOCK params WITH FRAME TITLE TEXT-000.
+PARAMETERS: p_fkart TYPE vbrk-fkart DEFAULT 'F2' OBLIGATORY,
+            p_waerk TYPE vbrk-waerk,
+            p_bukrs TYPE vbrk-bukrs DEFAULT '1000' MODIF ID ld1,
+            p_vkorg TYPE vbrk-vkorg DEFAULT '1000'.
+SELECTION-SCREEN SKIP 1.
+SELECT-OPTIONS: s_vbeln FOR vbrk-vbeln,
+                s_fkdat FOR vbrk-fkdat DEFAULT '20080118' TO '20080818',
+                s_land1 FOR vbrk-land1." DEFAULT 'EN' NO-EXTENSION MODIF ID ld1.
+SELECTION-SCREEN SKIP 1.
+SELECTION-SCREEN BEGIN OF BLOCK rb WITH FRAME TITLE TEXT-001.
+PARAMETERS: select1 RADIOBUTTON GROUP rad1,
+            select2 RADIOBUTTON GROUP rad1,
+            select3 RADIOBUTTON GROUP rad1,
+            select4 RADIOBUTTON GROUP rad1.
+SELECTION-SCREEN END OF BLOCK rb.
+SELECTION-SCREEN END OF BLOCK params.
+
+* Ha nem definialtuk a p_waerk valutát, akkor inicializáláskor 'EUR' lesz
+INITIALIZATION.
+  IF p_waerk IS INITIAL.
+    p_waerk = 'EUR'.
+  ENDIF.
+
+* Vizsgaljuk a p_vkorg-ot, ha olyat adunk értéknek ami nincs benne a vbrk-vkorg-ban akkor hibüzenet jön
+AT SELECTION-SCREEN ON p_vkorg.
+  IF p_vkorg IS NOT INITIAL.
+    SELECT COUNT(*) INTO szam FROM vbrk WHERE vkorg = p_vkorg.
+    IF szam = 0 AND sy-subrc NE 0.
+      MESSAGE e001(00) WITH 'Hiba! A Sales Organization ilyen elemet nem  tartalmaz'.
+    ENDIF.
+  ENDIF.
+
+* szelekció mező előtt még akiknek 'LD1' ID-juk van azoknak nem lehet a bemeneti értékét változtatni
+AT SELECTION-SCREEN OUTPUT.
+
+  LOOP AT SCREEN.
+*  PERFORM modify_screen2 USING screen-group1
+*                      CHANGING screen-input.
+    IF screen-group1 = 'LD1'.
+      screen-input = '0'.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+
+* A ZGER_001_VBRK_VBRP_SELECT_01 program műveletei
+START-OF-SELECTION.
+
+  IF select1 = 'X'.
+
+    SELECT SINGLE vbeln waerk vkorg vtweg belnr FROM vbrk
+      INTO CORRESPONDING FIELDS OF ls_selectsingle
+      WHERE fkart = p_fkart AND
+            waerk = p_waerk AND
+            bukrs = p_bukrs AND
+            vkorg = p_vkorg AND
+            vbeln IN s_vbeln AND
+            fkdat IN s_fkdat AND
+            land1 IN s_land1.
+    IF sy-subrc = 0.
+      WRITE: / 'vbeln:', ls_selectsingle-vbeln,
+             / 'waerk:', ls_selectsingle-waerk,
+             / 'vkorg:', ls_selectsingle-vkorg,
+             / 'vtweg:', ls_selectsingle-vtweg,
+             / 'belnr:', ls_selectsingle-belnr.
+    ELSE.
+      WRITE: 'No matching records found.'.
+    ENDIF.
+
+  ELSEIF select2 = 'X'.
+    SELECT vbeln waerk vkorg vtweg belnr FROM vbrk
+      INTO CORRESPONDING FIELDS OF ls_selecttable
+      WHERE fkart = p_fkart AND
+            waerk = p_waerk AND
+            bukrs = p_bukrs AND
+            vkorg = p_vkorg AND
+            vbeln IN s_vbeln AND
+            fkdat IN s_fkdat AND
+            land1 IN s_land1.
+      IF sy-subrc = 0.
+        WRITE: / 'vbeln:', ls_selectsingle-vbeln,
+               / 'waerk:', ls_selectsingle-waerk,
+               / 'vkorg:', ls_selectsingle-vkorg,
+               / 'vtweg:', ls_selectsingle-vtweg,
+               / 'belnr:', ls_selectsingle-belnr.
+      ELSE.
+        WRITE: 'No matching records found.'.
+      ENDIF.
+    ENDSELECT.
+
+  ELSEIF select3 = 'X'.
+    PERFORM select3.
+
+    SELECT DISTINCT vbrk~vbeln, vbrk~waerk, vbrk~vkorg, vbrk~vtweg, vbrk~belnr,
+           vbrp~posnr, vbrp~vrkme, vbrp~meins, vbrp~erdat
+      INTO CORRESPONDING FIELDS OF @jointable
+      FROM vbrk INNER JOIN vbrp ON vbrk~vbeln = vbrp~vbeln.
+      WRITE: / 'vbeln:', jointable-vbeln,
+             / 'waerk:', jointable-waerk,
+             / 'vkorg:', jointable-vkorg,
+             / 'vtweg:', jointable-vtweg,
+             / 'belnr:', jointable-belnr,
+             / 'posnr:', jointable-posnr,
+             / 'vrkme:', jointable-vrkme,
+             / 'meins:', jointable-meins,
+             / 'erdat:', jointable-erdat.
+    ENDSELECT.
+
+  ELSEIF select4 = 'X'.
+    SELECT vbrk~vbeln vbrk~waerk vbrk~vkorg vbrk~vtweg vbrk~belnr
+           vbrp~posnr vbrp~vrkme vbrp~meins vbrp~erdat vbrp~ean11
+    INTO CORRESPONDING FIELDS OF ls_jointable2
+    FROM vbrk 
+    INNER JOIN vbrp ON vbrk~vbeln = vbrp~vbeln.
+    WHERE fkart = p_fkart AND
+            waerk = p_waerk AND
+            bukrs = p_bukrs AND
+            vkorg = p_vkorg AND
+            vbeln IN s_vbeln AND
+            fkdat IN s_fkdat AND
+            land1 IN s_land1.
+* a kérés szt belső tábla feltöltése
+    
+    IF sy-subrc = 0.
+* populate internal table using a loop
+    LOOP AT it_jointable2 INTO ls_jointable2
+        IF ean11 IS INITIAL.
+            ls_jointable2-ean11 = ls_jointable2-posnr.
+        ENDIF
+        WRITE: / 'vbeln:', ls_jointable2-vbeln,
+               / 'waerk:', ls_jointable2-waerk,
+               / 'vkorg:', ls_jointable2-vkorg,
+               / 'vtweg:', ls_jointable2-vtweg,
+               / 'belnr:', ls_jointable2-belnr,
+               / 'posnr:', ls_jointable2-posnr,
+               / 'vrkme:', ls_jointable2-vrkme,
+               / 'meins:', ls_jointable2-meins,
+               / 'erdat:', ls_jointable2-erdat,
+               / 'ean11:', ls_jointable2-ean11.
+    ENDLOOP.
+    ELSE.
+      WRITE 'No matching records found.'.
+    ENDIF.
+  ENDIF.
+*&---------------------------------------------------------------------*
+*&      Form  MODIFY_SCREEN
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->  p1        text
+*  <--  p2        text
+*----------------------------------------------------------------------*
+FORM modify_screen.
+  LOOP AT SCREEN.
+    IF screen-group1 = 'LD1'.
+      screen-input = '0'.
+      MODIFY SCREEN.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+*&---------------------------------------------------------------------*
+*&      Form  MODIFY_SCREEN2
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*      -->P_SCREEN_GROUP1  text
+*      <--P_SCREEN_INPUT  text
+*----------------------------------------------------------------------*
+FORM modify_screen2  USING    $group1
+                     CHANGING $input.
+
+
+
+ENDFORM.
+
+INCLUDE zger_001_vbrk_vbrp_select_0f01.

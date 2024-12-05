@@ -1,0 +1,39 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZGER_002_VBRK_VBRP_S01E05_TOP
+*&---------------------------------------------------------------------*
+* táblák, változók definiálasa
+
+INITIALIZATION.
+  TABLES: vbrk, vbrp.
+  DATA szam TYPE i.
+  DATA it_vbrk TYPE TABLE OF vbrk.
+  DATA ls_selecttable TYPE vbrk.
+  DATA ls_selectsingle TYPE vbrk.
+* join táblák struktúra definiálása
+  TYPES: BEGIN OF jointable_type,
+           vbeln TYPE vbrk-vbeln,
+           waerk TYPE vbrk-waerk,
+           vkorg TYPE vbrk-vkorg,
+           vtweg TYPE vbrk-vtweg,
+           belnr TYPE vbrk-belnr,
+           posnr TYPE vbrp-posnr,
+           vrkme TYPE vbrp-vrkme,
+           meins TYPE vbrp-meins,
+           erdat TYPE vbrp-erdat,
+         END OF jointable_type.
+  TYPES: BEGIN OF jointable2_type,
+           vbeln TYPE vbrk-vbeln,
+           waerk TYPE vbrk-waerk,
+           vkorg TYPE vbrk-vkorg,
+           vtweg TYPE vbrk-vtweg,
+           belnr TYPE vbrk-belnr,
+           posnr TYPE vbrp-posnr,
+           vrkme TYPE vbrp-vrkme,
+           meins TYPE vbrp-meins,
+           erdat TYPE vbrp-erdat,
+           ean11 TYPE vbrp-ean11,
+         END OF jointable2_type.
+  DATA jointable TYPE jointable_type.
+* itt majd a 4-es feladat szerint belsőtáblába rakjuk a struktúrát
+  DATA: it_jointable2 TYPE TABLE OF jointable2_type,
+        ls_jointable2 TYPE  jointable2_type.

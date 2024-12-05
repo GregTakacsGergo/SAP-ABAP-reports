@@ -1,0 +1,23 @@
+*&---------------------------------------------------------------------*
+*& Report ZGER_002_VBRK_VBRP_S01E05
+*&---------------------------------------------------------------------*
+*& Geri 2024.02.09 házi feladat S01E05
+*&---------------------------------------------------------------------*
+REPORT zger_002_vbrk_vbrp_s01e05.
+
+
+INCLUDE zger_002_vbrk_vbrp_s01e05_top.
+INCLUDE zger_002_vbrk_vbrp_s01e05_scrn.
+INCLUDE zger_002_vbrk_vbrp_s01e05_form.
+
+START-OF-SELECTION.
+
+  IF select1 = 'X'.
+    PERFORM elso_radiogomb.
+  ELSEIF select2 = 'X'.
+    PERFORM masodik_radiogomb.
+  ELSEIF select3 = 'X'.
+    PERFORM harmadik_radiogomb.
+  ELSEIF select4 = 'X'.
+    PERFORM negyedik_radiogomb.
+  ENDIF.
