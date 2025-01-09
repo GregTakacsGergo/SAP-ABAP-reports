@@ -1,0 +1,204 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZGER_002_VBRK_VBRP_S01E05_FORM
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Form  modify_screen
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  --> p_p7_modif_id
+*  --> p_screen_input
+*  <--
+*----------------------------------------------------------------------*
+FORM modify_screen USING p_p7_modif_id TYPE c
+                         p_input TYPE c.
+    LOOP AT SCREEN.
+        IF screen-group1 = p_p7_modif_id.
+            screen-input = p_input.
+            MODIFY SCREEN.
+        ENDIF.
+    ENDLOOP.
+ENDFORM.            "p7 elem változtatása
+
+*&---------------------------------------------------------------------*
+*&      Form  elso_radiogomb
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->
+*  -->
+*  <--
+*----------------------------------------------------------------------*
+FORM elso_radiogomb.
+
+  SELECT SINGLE vbeln waerk vkorg vtweg belnr FROM vbrk
+        INTO CORRESPONDING FIELDS OF ls_selectsingle
+        WHERE fkart = p_fkart AND
+              waerk = p_waerk AND
+              bukrs = p_bukrs AND
+              vkorg = p_vkorg AND
+              vbeln IN s_vbeln AND
+              fkdat IN s_fkdat AND
+              land1 IN s_land1.
+  IF sy-subrc = 0.
+    WRITE: / 'vbeln:', ls_selectsingle-vbeln,
+           / 'waerk:', ls_selectsingle-waerk,
+           / 'vkorg:', ls_selectsingle-vkorg,
+           / 'vtweg:', ls_selectsingle-vtweg,
+           / 'belnr:', ls_selectsingle-belnr.
+  ELSE.
+    WRITE: 'No matching records found.'.
+  ENDIF.
+ENDFORM.              "első rádiógomb
+
+*&---------------------------------------------------------------------*
+*&      Form  masodik_radiogomb
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->
+*  -->
+*  <--
+*----------------------------------------------------------------------*
+FORM masodik_radiogomb.
+
+  SELECT vbeln waerk vkorg vtweg belnr FROM vbrk
+      INTO CORRESPONDING FIELDS OF ls_selecttable
+      WHERE fkart = p_fkart AND
+            waerk = p_waerk AND
+            bukrs = p_bukrs AND
+            vkorg = p_vkorg AND
+            vbeln IN s_vbeln AND
+            fkdat IN s_fkdat AND
+            land1 IN s_land1.
+    IF sy-subrc = 0.
+      PERFORM write USING ls_selectsingle-vbeln
+                          ls_selectsingle-waerk
+                          ls_selectsingle-vkorg
+                          ls_selectsingle-vtweg
+                          ls_selectsingle-belnr.
+
+*      WRITE: / 'vbeln:', ls_selectsingle-vbeln,
+*             / 'waerk:', ls_selectsingle-waerk,
+*             / 'vkorg:', ls_selectsingle-vkorg,
+*             / 'vtweg:', ls_selectsingle-vtweg,
+*             / 'belnr:', ls_selectsingle-belnr.
+    ELSE.
+      WRITE: 'No matching records found.'.
+    ENDIF.
+  ENDSELECT.
+ENDFORM.                  "második rádiógomb
+
+*&---------------------------------------------------------------------*
+*&      Form harmadik_radiogomb
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->
+*  -->
+*  <--
+*----------------------------------------------------------------------*
+FORM harmadik_radiogomb.
+  SELECT DISTINCT vbrk~vbeln, vbrk~waerk, vbrk~vkorg, vbrk~vtweg, vbrk~belnr,
+             vbrp~posnr, vbrp~vrkme, vbrp~meins, vbrp~erdat
+        INTO CORRESPONDING FIELDS OF @jointable
+        FROM vbrk INNER JOIN vbrp ON vbrk~vbeln = vbrp~vbeln.
+    WRITE: / 'vbeln:', jointable-vbeln,
+           / 'waerk:', jointable-waerk,
+           / 'vkorg:', jointable-vkorg,
+           / 'vtweg:', jointable-vtweg,
+           / 'belnr:', jointable-belnr,
+           / 'posnr:', jointable-posnr,
+           / 'vrkme:', jointable-vrkme,
+           / 'meins:', jointable-meins,
+           / 'erdat:', jointable-erdat.
+  ENDSELECT.
+
+ENDFORM.                  "harmadik rádiógomb
+
+*&---------------------------------------------------------------------*
+*&      Form harmadik_radiogomb
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->
+*  -->
+*  <--
+*----------------------------------------------------------------------*
+FORM nagyedik_radiogomb.
+** join típusú struktúra
+*    SELECT vbrk~vbeln, vbrk~waerk, vbrk~vkorg, vbrk~vtweg, vbrk~belnr,
+*           vbrp~posnr, vbrp~vrkme, vbrp~meins, vbrp~erdat, vbrp~ean11
+*           INTO CORRESPONDING FIELDS OF TABLE @ls_jointable2
+*           FROM vbrk INNER JOIN vbrp ON vbrk~vbeln = vbrp~vbeln.
+*
+** a kérés szt belső tábla feltöltése
+*      INSERT ls_jointable2 INTO TABLE it_jointable2.
+*    ENDSELECT.
+*    IF sy-subrc = 0.
+*      LOOP AT it_jointable2 INTO ls_jointable2.
+*        where ls_jointable2-ean11 is null.
+*        MOVE ls_jointable2-posnr TO ls_jointable2-ean11.
+*        WRITE: / 'vbeln:', ls_jointable2-vbeln,
+*               / 'waerk:', ls_jointable2-waerk,
+*               / 'vkorg:', ls_jointable2-vkorg,
+*               / 'vtweg:', ls_jointable2-vtweg,
+*               / 'belnr:', ls_jointable2-belnr,
+*               / 'posnr:', ls_jointable2-posnr,
+*               / 'vrkme:', ls_jointable2-vrkme,
+*               / 'meins:', ls_jointable2-meins,
+*               / 'erdat:', ls_jointable2-erdat,
+*               / 'ean11:', ls_jointable2-ean11.
+*      ENDLOOP.
+*    ELSE.
+*      WRITE 'No matching records found.'.
+
+*-----------------------------------------------------------vagy így--------------------20241018
+" ELSEIF select4 = 'X'.
+"     SELECT vbrk~vbeln vbrk~waerk vbrk~vkorg vbrk~vtweg vbrk~belnr
+"            vbrp~posnr vbrp~vrkme vbrp~meins vbrp~erdat vbrp~ean11
+"     INTO CORRESPONDING FIELDS OF ls_jointable2
+"     FROM vbrk
+"     INNER JOIN vbrp ON vbrk~vbeln = vbrp~vbeln.
+" * a kérés szt belső tábla feltöltése
+"     INSERT ls_jointable2 INTO TABLE it_jointable2.
+"     IF sy-subrc = 0.
+" * populate internal table using a loop
+"       LOOP AT it_jointable2 INTO ls_jointable2.
+"         IF ls_jointable2-ean11 IS INITIAL.
+"           MOVE ls_jointable2-posnr TO ls_jointable2-ean11.
+"           WRITE: / 'vbeln:', ls_jointable2-vbeln,
+"                 / 'waerk:', ls_jointable2-waerk,
+"                 / 'vkorg:', ls_jointable2-vkorg,
+"                 / 'vtweg:', ls_jointable2-vtweg,
+"                 / 'belnr:', ls_jointable2-belnr,
+"                 / 'posnr:', ls_jointable2-posnr,
+"                 / 'vrkme:', ls_jointable2-vrkme,
+"                 / 'meins:', ls_jointable2-meins,
+"                 / 'erdat:', ls_jointable2-erdat,
+"                 / 'ean11:', ls_jointable2-ean11.
+"         Endif.
+"       ENDLOOP.
+"     ELSE.
+"       WRITE 'No matching records found.'.
+"     ENDIF.
+"     ENDSELECT.
+
+ENDFORM.                "negyedik rádiógomb
+
+*&---------------------------------------------------------------------*
+*&      Form write
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+*  -->
+*  -->
+*  <--
+*----------------------------------------------------------------------*
+FORM write USING a
+                 b
+                 c
+                 d
+                 e.
+  WRITE: / a,b,c,d,e.
+ENDFORM.                  "write

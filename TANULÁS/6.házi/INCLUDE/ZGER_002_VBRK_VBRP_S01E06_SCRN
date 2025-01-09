@@ -1,0 +1,63 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZGER_002_VBRK_VBRP_S01E05_SCRN
+*&---------------------------------------------------------------------*
+
+* szelekciós képernyő beállítása
+  SELECTION-SCREEN BEGIN OF BLOCK params WITH FRAME TITLE TEXT-000.
+  PARAMETERS: p_fkart TYPE vbrk-fkart DEFAULT 'F2' OBLIGATORY,
+              p_waerk TYPE vbrk-waerk,
+              p_bukrs TYPE vbrk-bukrs DEFAULT '1000' MODIF ID ld1,
+              p_vkorg TYPE vbrk-vkorg DEFAULT '1000'.
+  SELECTION-SCREEN SKIP 1.
+  SELECT-OPTIONS: s_vbeln FOR vbrk-vbeln,
+                  s_fkdat FOR vbrk-fkdat DEFAULT '20080118' TO '20080818',
+                  s_land1 FOR vbrk-land1." DEFAULT 'EN' NO-EXTENSION MODIF ID ld1.
+  SELECTION-SCREEN SKIP 1.
+  SELECTION-SCREEN BEGIN OF BLOCK rb WITH FRAME TITLE TEXT-001.
+  PARAMETERS: select1 RADIOBUTTON GROUP rad1,
+              select2 RADIOBUTTON GROUP rad1,
+              select3 RADIOBUTTON GROUP rad1,
+              select4 RADIOBUTTON GROUP rad1,
+              fuggveny RADIOBUTTON GROUP rad1.
+  SELECTION-SCREEN END OF BLOCK rb.
+  SELECTION-SCREEN SKIP 1.
+  SELECTION-SCREEN BEGIN OF BLOCK modify_screen WITH FRAME TITLE TEXT-002.
+  PARAMETERS: p1 TYPE char03 MODIF ID LD1,
+              p2 TYPE char03,
+              p3 TYPE char03,
+              p4 TYPE char03 MODIF ID ASD,
+              p5 TYPE char03,
+              p6 TYPE char03,
+              p7 TYPE char03 MODIF ID LD2.
+  SELECTION-SCREEN END OF BLOCK modify_screen.
+  SELECTION-SCREEN END OF BLOCK params.
+
+* Ha nem definialtuk a p_waerk valutát, akkor inicializáláskor 'EUR' lesz
+  INITIALIZATION.
+    IF p_waerk IS INITIAL.
+      p_waerk = 'EUR'.
+    ENDIF.
+
+  AT SELECTION-SCREEN OUTPUT.
+    IF screen-group1 = 'LD1'.
+      screen-input = '0'.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'P2'.
+      screen-output = '0'.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'P3'.
+      screen-intensified = '1'.
+      MODIFY SCREEN.
+    ELSEIF screen-group1 = 'ASD'.
+      screen-invisible = '1'.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'P5'.
+      screen-required = '1'.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'P6'.
+      screen-active = '0'.
+      MODIFY SCREEN.
+    ELSEIF screen-name = 'P7'.
+      DATA: lv_input TYPE c VALUE '0'.
+      PERFORM modify_screen USING 'LD2' lv_input.
+    ENDIF.
