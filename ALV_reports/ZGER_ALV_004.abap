@@ -5,12 +5,13 @@
 *&---------------------------------------------------------------------*
 REPORT ZGER_ALV_004.
 
+
 TYPE-POOLS: SLIS.
-TYPES:
-    BEGIN OF UD_STRUCT,
-        MATNR TYPE MATNR,
-        MAKTX TYPE MAKTX,
-    END OF UD_STRUCT.
+TYPES: UD_STRUCT TYPE ZGER_MATNRMAKTX.
+"    BEGIN OF UD_STRUCT,
+"        MATNR TYPE MATNR,
+"        MAKTX TYPE MAKTX,
+"    END OF UD_STRUCT.
 TABLES: MARA, MAKT.
 
 DATA GT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
@@ -22,18 +23,25 @@ INITIALIZATION.
     PERFORM FIELDCAT_INIT USING GT_FIELDCAT[].
 
 START-OF-SELECTION.
-    PERFORM SELECT_DATA TABLES GT-OUTTAB.
+    PERFORM SELECT_DATA TABLES GT_OUTTAB.
 END-OF-SELECTION.
 
 *megjelenítés
-CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
+CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
     EXPORTING
         I_CALLBACK_PROGRAM = G_REPID
         IT_FIELDCAT = GT_FIELDCAT[]
 *           I_SAVE = 'A'
-    TABLES 
+    TABLES
         T_OUTTAB = GT_OUTTAB.
- 
+
+*&---------------------------------------------------------------------*
+*&      Form FIELDCAT_INIT
+*&---------------------------------------------------------------------*
+*       mezőkatalógus inicializálás
+*----------------------------------------------------------------------*
+*  -->  RT_FIELDCAT
+*----------------------------------------------------------------------*
 FORM FIELDCAT_INIT
     USING RT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
     DATA: LS_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
@@ -52,5 +60,23 @@ FORM FIELDCAT_INIT
     LS_FIELDCAT-FIELDNAME = 'MAKTX'.
     LS_FIELDCAT-REF_FIELDNAME = 'MAKTX'.
     LS_FIELDCAT-REF_TABNAME = 'MAKT'.
+    LS_FIELDCAT-SELTEXT_L = 'ANYAG MEGNEVEZÉSE'.
     APPEND LS_FIELDCAT TO RT_FIELDCAT.
 ENDFORM.
+
+*&---------------------------------------------------------------------*
+*&      Form  SELECT_DATA
+*&---------------------------------------------------------------------*
+*       szelekció szubrutin
+*----------------------------------------------------------------------*
+*  -->  RT_OUTTAB
+*----------------------------------------------------------------------*
+FORM SELECT_DATA
+  TABLES RT_OUTTAB LIKE GT_OUTTAB[].
+  SELECT MARA~MATNR MAKT~MAKTX
+    INTO (RT_OUTTAB-MATNR, RT_OUTTAB-MAKTX) UP TO 10 ROWS
+    FROM MARA INNER JOIN MAKT ON MARA~MATNR = MAKT~MATNR
+    WHERE MAKT~SPRAS EQ 'EN'.
+    APPEND RT_OUTTAB.
+  ENDSELECT.
+ENDFORM.  "select_data
