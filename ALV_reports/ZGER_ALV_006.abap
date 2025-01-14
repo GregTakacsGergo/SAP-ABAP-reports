@@ -1,7 +1,12 @@
 *&---------------------------------------------------------------------*
 *& Report ZGER_ALV_006
 *&---------------------------------------------------------------------*
-*&
+*& This report displays material (MATNR) data and inventory details in 
+*& an ALV format. The main table shows material numbers and descriptions. 
+*& On double-clicking a row, a pop-up ALV table displays the selected 
+*& material's stock quantities (unrestricted, quality inspection, and 
+*& blocked stock) along with their total. The report supports multi-language 
+*& material descriptions.
 *&---------------------------------------------------------------------*
 REPORT ZGER_ALV_006_NOHEADER .
 
@@ -19,7 +24,6 @@ DATA G_REPID TYPE SY-REPID.
 
 DATA G_USER_COMMAND TYPE SLIS_FORMNAME VALUE 'USER-COMMAND'.
 
-" Szelekciós opciók
 SELECTION-SCREEN BEGIN OF BLOCK sel WITH FRAME TITLE TEXT-001.
   PARAMETERS P_SPRAS TYPE SPRAS DEFAULT 'HU'.
   SELECT-OPTIONS: so_matnr FOR mara-matnr.
