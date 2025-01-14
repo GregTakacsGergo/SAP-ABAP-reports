@@ -1,25 +1,34 @@
 *&---------------------------------------------------------------------*
 *& Report ZGER_ALV_006
 *&---------------------------------------------------------------------*
-*& selections, internal tables without HEADER LINE 
-*& a more modern version of the report ZGER_ALV_006
+*& This report displays material (MATNR) data and inventory details in 
+*& an ALV format. The main table shows material numbers and descriptions. 
+*& On double-clicking a row, a pop-up ALV table displays the selected 
+*& material's stock quantities (unrestricted, quality inspection, and 
+*& blocked stock) along with their total. The report supports multi-language 
+*& material descriptions.
 *&---------------------------------------------------------------------*
-REPORT ZGER_ALV_006_NOHEADER LINE-COUNT 20.
+REPORT ZGER_ALV_006_NOHEADER .
 
 TYPE-POOLS: SLIS.
-TYPES UD_STRUCT TYPE ZGER_MATNRMAKTX.
-TYPES UD_STRUCT2 TYPE ZGER_STRUCT_KESZLET.
 TABLES: MARA, MAKT.
 
 DATA GT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
-DATA GT_OUTTAB TYPE TABLE OF UD_STRUCT.
-DATA GT_OUTTAB2 TYPE TABLE OF UD_STRUCT2.
-DATA LS_OUTTAB TYPE UD_STRUCT.
-DATA LS_OUTTAB2 TYPE UD_STRUCT2.
+
+DATA GT_OUTTAB TYPE TABLE OF ZGER_MATNRMAKTX.
+DATA GT_OUTTAB2 TYPE TABLE OF ZGER_STRUCT_KESZLET.
+DATA LS_OUTTAB TYPE ZGER_MATNRMAKTX.
+DATA LS_OUTTAB2 TYPE ZGER_STRUCT_KESZLET.
+
 DATA G_REPID TYPE SY-REPID.
+
 DATA G_USER_COMMAND TYPE SLIS_FORMNAME VALUE 'USER-COMMAND'.
 
-PARAMETERS P_SPRAS TYPE SPRAS DEFAULT 'EN'.
+" Szelekciós opciók
+SELECTION-SCREEN BEGIN OF BLOCK sel WITH FRAME TITLE TEXT-001.
+  PARAMETERS P_SPRAS TYPE SPRAS DEFAULT 'HU'.
+  SELECT-OPTIONS: so_matnr FOR mara-matnr.
+SELECTION-SCREEN END OF BLOCK sel.
 
 INITIALIZATION. "mezőkatalógus inicializálása.
   G_REPID = SY-REPID.
@@ -27,16 +36,17 @@ INITIALIZATION. "mezőkatalógus inicializálása.
 
 START-OF-SELECTION.
   PERFORM SELECT_DATA TABLES GT_OUTTAB.
-  PERFORM SELECT_DATA_KESZLET TABLES GT_OUTTAB GT_OUTTAB2.
+  PERFORM SELECT_DATA_KESZLET TABLES GT_OUTTAB
+                                     GT_OUTTAB2.
 END-OF-SELECTION.
 
 *megjelenítés
-CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
+CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
     EXPORTING
         I_CALLBACK_PROGRAM = G_REPID
         IT_FIELDCAT = GT_FIELDCAT[]
         I_SAVE = 'A'
-        I_CALLBACK_USER_COMMAND = G_USER_COMMAND
+        I_CALLBACK_USER_COMMAND = 'USER_COMMAND'
     TABLES
         T_OUTTAB = GT_OUTTAB.
 
@@ -47,8 +57,7 @@ CALL FUNCTION 'REUSE_ALV_LIST_DISPLAY'
 *----------------------------------------------------------------------*
 *  -->  RT_FIELDCAT
 *----------------------------------------------------------------------*
-FORM FIELDCAT_INIT
-    USING RT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+FORM FIELDCAT_INIT USING RT_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
     DATA: LS_FIELDCAT TYPE SLIS_FIELDCAT_ALV.
 
     CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'
@@ -67,15 +76,14 @@ ENDFORM.   "FIELDCAT_INIT
 *----------------------------------------------------------------------*
 *  -->  RT_OUTTAB
 *----------------------------------------------------------------------*
-FORM SELECT_DATA
-  TABLES RT_OUTTAB LIKE GT_OUTTAB.
+FORM SELECT_DATA TABLES XT_OUTTAB LIKE GT_OUTTAB.
 
-  DATA: LS_OUTTAB TYPE UD_STRUCT.
+  DATA: XS_OUTTAB TYPE ZGER_MATNRMAKTX.
   SELECT MARA~MATNR MAKT~MAKTX MAKT~SPRAS
-    INTO (LS_OUTTAB-MATNR, LS_OUTTAB-MAKTX, LS_OUTTAB-SPRAS)
+    INTO (XS_OUTTAB-MATNR, XS_OUTTAB-MAKTX, XS_OUTTAB-SPRAS)
     FROM MARA INNER JOIN MAKT ON MARA~MATNR = MAKT~MATNR
     WHERE MAKT~SPRAS EQ P_SPRAS.
-    APPEND LS_OUTTAB TO RT_OUTTAB.
+    APPEND XS_OUTTAB TO XT_OUTTAB.
   ENDSELECT.
 ENDFORM.  "SELECT_DATA
 
@@ -93,7 +101,28 @@ FORM USER_COMMAND USING R_UCOMM LIKE SY-UCOMM
     WHEN '&IC1'.  "duplaklikk
       READ TABLE GT_OUTTAB INTO LS_OUTTAB INDEX RS_SELFIELD-TABINDEX.
       IF SY-SUBRC = 0.
-        SUBMIT RM07MWRKK WITH MATNR EQ LS_OUTTAB-MATNR AND RETURN.
+        DATA: XT_POPUP TYPE TABLE OF ZGER_STRUCT_KESZLET,
+              XS_POPUP TYPE ZGER_STRUCT_KESZLET.
+
+        SELECT MATNR LABST INSME SPEME
+        INTO TABLE XT_POPUP
+        FROM MARD
+        WHERE MATNR = LS_OUTTAB-MATNR.
+
+        " Készlet számítása a pop-up táblához
+        LOOP AT XT_POPUP INTO XS_POPUP.
+          XS_POPUP-KESZLET = XS_POPUP-LABST + XS_POPUP-INSME + XS_POPUP-SPEME.
+          MODIFY XT_POPUP FROM XS_POPUP TRANSPORTING KESZLET.
+        ENDLOOP.
+
+          CALL FUNCTION 'REUSE_ALV_POPUP_TO_SELECT'
+            EXPORTING
+              I_TITLE = 'POP-UP'
+              I_ZEBRA = 'X'
+              I_TABNAME = 'LT_POPUP'
+              I_STRUCTURE_NAME = 'ZGER_STRUCT_KESZLET'
+            TABLES
+              T_OUTTAB = XT_POPUP.
       ENDIF.
       CLEAR R_UCOMM.
   ENDCASE.
@@ -104,24 +133,20 @@ ENDFORM.
 *&---------------------------------------------------------------------*
 *       készlet adatokat összegyűjtő szubrutin
 *----------------------------------------------------------------------*
-*  -->  RT_OUTTAB
-*  -->  RT_OUTTAB2
-*----------------------------------------------------------------------*
-FORM SELECT_DATA_KESZLET
-  TABLES RT_OUTTAB  TYPE TABLE OF UD_STRUCT
-        RT_OUTTAB2 TYPE TABLE OF UD_STRUCT2.
+FORM SELECT_DATA_KESZLET TABLES XT_OUTTAB  STRUCTURE ZGER_MATNRMAKTX
+                                XT_OUTTAB2 STRUCTURE ZGER_STRUCT_KESZLET.
 
-  DATA: LS_OUTTAB   TYPE UD_STRUCT,
-        LS_OUTTAB2  TYPE UD_STRUCT2.
+  DATA: XS_OUTTAB   TYPE ZGER_MATNRMAKTX,
+        XS_OUTTAB2  TYPE ZGER_STRUCT_KESZLET.
 
-  LOOP AT RT_OUTTAB INTO LS_OUTTAB.
+  LOOP AT XT_OUTTAB INTO XS_OUTTAB.
     SELECT LABST INSME SPEME
-    INTO (LS_OUTTAB2-LABST, LS_OUTTAB2-INSME, LS_OUTTAB2-SPEME)
+    INTO (XS_OUTTAB2-LABST, XS_OUTTAB2-INSME, XS_OUTTAB2-SPEME)
     FROM MARD
-
-    WHERE MATNR EQ LS_OUTTAB-MATNR.
+    WHERE MATNR EQ XS_OUTTAB-MATNR.
+    XS_OUTTAB-KESZLET = XS_OUTTAB2-LABST + XS_OUTTAB2-INSME + XS_OUTTAB2-SPEME.
     IF sy-subrc = 0.
-      APPEND LS_OUTTAB2 TO RT_OUTTAB2.
+    MODIFY XT_OUTTAB FROM XS_OUTTAB.
     ENDIF.
     ENDSELECT.
   ENDLOOP.
