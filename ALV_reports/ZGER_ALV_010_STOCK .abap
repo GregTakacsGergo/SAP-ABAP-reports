@@ -5,7 +5,7 @@
 *& stock levels in an ALV format. The ALV table shows the material number, 
 *& description, and other details. Double-clicking opens a pop-up table 
 *& to view the specific warehouse stocks (unrestricted, quality inspection, 
-*& blocked) and their totals by factory.
+*& blocked) and their totals by plant.
 *&---------------------------------------------------------------------*
 REPORT ZGER_ALV_010_STOCK.
 
@@ -31,12 +31,13 @@ SELECTION-SCREEN END OF BLOCK sel.
 
 INITIALIZATION. "mezőkatalógus inicializálása.
   G_REPID = SY-REPID.
-  PERFORM FIELDCAT_INIT USING GT_FIELDCAT[].
-
+  
 START-OF-SELECTION.
   PERFORM SELECT_DATA USING GT_OUTTAB.
   PERFORM SELECT_DATA_KESZLET TABLES GT_OUTTAB
                                      GT_OUTTAB2.
+  PERFORM FIELDCAT_INIT USING GT_FIELDCAT[].
+
 END-OF-SELECTION.
 
 *megjelenítés
