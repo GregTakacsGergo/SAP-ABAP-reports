@@ -82,53 +82,41 @@ CLASS lcl_event_handler IMPLEMENTATION.
     LOOP AT er_data_changed->mt_good_cells INTO ls_mod_cell.
       IF ls_mod_cell-fieldname = 'XLOEKZ'.
         DATA(lv_value) = ls_mod_cell-value.
-
-        READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab2>) INDEX ls_mod_cell-row_id.
+        READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab>) INDEX ls_mod_cell-row_id.
         IF sy-subrc = 0.
-
           " Ha a checkbox be van pipálva, akkor NETWR readonly és LAMP_ICON piros
           IF lv_value = 'X'.
-            <fs_outtab2>-lamp_icon = '@0A@'.  " Piros ikon SAP ikonlista alapján
-            LOOP AT <fs_outtab2>-celltab INTO ls_celltab.
-              IF ls_celltab-fieldname = 'NETWR'.
-                "                IF ls_celltab-style = cl_gui_alv_grid=>mc_style_enabled.
-                ls_celltab-style = cl_gui_alv_grid=>mc_style_disabled.
-                MODIFY <fs_outtab2>-celltab FROM ls_celltab TRANSPORTING style.
-                "                ENDIF.
-              ENDIF.
+            <fs_outtab>-lamp_icon = '@0A@'.  " Piros ikon trafficlámpa
+            LOOP AT <fs_outtab>-celltab INTO ls_celltab.
+              ls_celltab-style = cl_gui_alv_grid=>mc_style_disabled.
+              MODIFY <fs_outtab>-celltab FROM ls_celltab TRANSPORTING style.
             ENDLOOP.
           ELSEIF lv_value = ''.
-            <fs_outtab2>-lamp_icon = '@08@'.  " Alapértelmezett ikon (pl. zöld)
-            LOOP AT <fs_outtab2>-celltab INTO ls_celltab.
-              "              IF ls_celltab-style = cl_gui_alv_grid=>mc_style_disabled.
+            <fs_outtab>-lamp_icon = '@08@'.  " Alapértelmezett ikon ( zöld)
+            LOOP AT <fs_outtab>-celltab INTO ls_celltab.
               ls_celltab-style = cl_gui_alv_grid=>mc_style_enabled.
-              MODIFY <fs_outtab2>-celltab FROM ls_celltab TRANSPORTING style.
-              "              ENDIF.
-*              " 🔹 Hozzáadás az lt_mod_cells-hez
-*              APPEND INITIAL LINE TO lt_mod_cells ASSIGNING FIELD-SYMBOL(<fs_cell>).
-*              <fs_cell>-row_id = ls_mod_cell-row_id.
-*              <fs_cell>-fieldname = 'NETWR'.
-*              <fs_cell>-value = <fs_outtab2>-netwr.
-*
-*              APPEND <fs_cell> TO lt_mod_cells.
+              MODIFY <fs_outtab>-celltab FROM ls_celltab TRANSPORTING style.
             ENDLOOP.
           ENDIF.
-          MODIFY gt_outtab FROM <fs_outtab2> INDEX ls_mod_cell-row_id.
         ENDIF.
-* hozzá kéne adni itt is a <fs_outtab2>-celltab valahogy a lt_mod_cells-hez !!!!!!!!!!!!!!!!!!
-      ELSEIF   ls_mod_cell-fieldname = 'NETWR'.
 
-        " Módosítás regisztrálása az ALV-ben
-*        READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs2_outtab>) INDEX ls_mod_cell-row_id.
-*        IF sy-subrc = 0.
+      ELSEIF   ls_mod_cell-fieldname = 'NETWR'.
         CLEAR lt_mod_cells.
         APPEND INITIAL LINE TO lt_mod_cells ASSIGNING FIELD-SYMBOL(<fs_cell2>).
         <fs_cell2>-row_id = ls_mod_cell-row_id.
         <fs_cell2>-fieldname = 'NETWR'.
         <fs_cell2>-value = ls_mod_cell-value.
-
         APPEND <fs_cell2> TO lt_mod_cells.
 
+        " Színezés a feladat alapján. Átláthatóság miatt neveztem <fs_outtab2>-nek.
+        DATA(lv_netwr) = CONV netwr( ls_mod_cell-value ). "Színezéshez NETWR konvertálása számformátumba
+        READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab2>) INDEX ls_mod_cell-row_id.
+        IF sy-subrc = 0.
+          "Újraszínezés, mert másképp maradnának az előbbi szerkesztett tábla sor színezései!
+          PERFORM sor_szinezes USING   <fs_outtab2>-matnr
+                                     lv_netwr
+                            CHANGING <fs_outtab2>-color.
+        ENDIF.
       ENDIF.
     ENDLOOP.
     go_grid->refresh_table_display( i_soft_refresh = 'X' ).
@@ -429,6 +417,7 @@ MODULE pbo_101 OUTPUT.
     go_grid->set_table_for_first_display(
       EXPORTING
         i_structure_name = 'ZDEV7_EKKOEKPO'
+        is_layout        = layout
       CHANGING
         it_outtab        = gt_outtab
         it_fieldcatalog  = gt_fieldcat
