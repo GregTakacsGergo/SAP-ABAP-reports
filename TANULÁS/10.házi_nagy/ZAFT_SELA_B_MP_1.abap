@@ -122,6 +122,19 @@ CLASS lcl_event_handler IMPLEMENTATION.
     go_grid->refresh_table_display( i_soft_refresh = 'X' ).
     " Módosítások alkalmazása az ALV-ben
     er_data_changed->mt_mod_cells = lt_mod_cells.
+  
+    "A kurzor beállítása
+    DATA: ls_row_id TYPE lvc_s_row,
+          ls_col_id TYPE lvc_s_col.
+
+    ls_row_id-index = ls_mod_cell-row_id.
+    ls_col_id-fieldname = ls_mod_cell-fieldname.
+
+    go_grid->set_current_cell_via_id(
+      EXPORTING
+        is_row_id = ls_row_id
+        is_column_id = ls_col_id
+    ).
   ENDMETHOD.
 
 ENDCLASS.
