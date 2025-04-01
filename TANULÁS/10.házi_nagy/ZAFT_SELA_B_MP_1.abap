@@ -324,7 +324,50 @@ INCLUDE zaft_sela_b_mp_1_exit_101i02.
 
 INCLUDE zaft_sela_b_mp_1_hide_xloeko02.
 
-*-----------------------------------------------------------------101-screen----------------------------------------------------------------
+*-------------------------------------------------------------ZDEV7_013_HOME_S01E10-FUNCTION---------------------------------------------------------------------
+FUNCTION ZDEV7_013_HOME_S01E10.
+*"----------------------------------------------------------------------
+*"*"Local Interface:
+*"  IMPORTING
+*"     REFERENCE(IV_EBELN) TYPE  EKKO-EBELN
+*"  EXPORTING
+*"     REFERENCE(EV_DIFFERENCE) TYPE  CHAR01
+*"----------------------------------------------------------------------
+
+DATA:   "ET_MISMATCHED_ROWS TYPE ZGER_EKKOEKPO,
+        lt_ekkoekpo TYPE TABLE OF Zdev7_EKKOEKPO,
+        lt_ekpo      TYPE TABLE OF EKPO,
+        lt_result    TYPE TABLE OF Zdev7_EKKOEKPO,
+        ls_ekkoekpo  TYPE Zdev7_EKKOEKPO,
+        ls_ekpo      TYPE EKPO.
+
+  " ZEKKOEKPO tábla beolvasása
+  SELECT * FROM Zdev7_EKKOEKPO INTO TABLE lt_ekkoekpo WHERE ebeln = IV_EBELN.
+
+  " EKPO tábla beolvasása
+  SELECT * FROM EKPO INTO TABLE lt_ekpo WHERE ebeln = IV_EBELN.
+
+  " Kezdetben nincs eltérés
+  CLEAR EV_DIFFERENCE.
+
+  " Összehasonlítás ciklussal
+  LOOP AT lt_ekkoekpo INTO ls_ekkoekpo.
+    READ TABLE lt_ekpo INTO ls_ekpo WITH KEY ebeln = ls_ekkoekpo-ebeln
+                                                ebelp = ls_ekkoekpo-ebelp.
+    IF sy-subrc <> 0 OR ls_ekkoekpo-netwr <> ls_ekpo-netwr.
+      " Ha az EKPO-ban nincs meg, vagy az NETWR nem egyezik, eltérés van
+      APPEND ls_ekkoekpo TO lt_result.
+      EV_DIFFERENCE = 'X'.
+    ELSEIF sy-subrc = 0 AND ls_ekkoekpo-netwr = ls_ekpo-netwr.
+      EV_DIFFERENCE = ''.
+    ENDIF.
+  ENDLOOP.
+  
+  " Eltérések visszaadása
+  "ET_MISMATCHED_ROWS = lt_result.
+ENDFUNCTION.
+
+*-----------------------------------------------------------------101-screen--------------------------------------------------------------------------------------
 
 PROCESS BEFORE OUTPUT.
   MODULE status_0101.
