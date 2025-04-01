@@ -1,18 +1,26 @@
 *&---------------------------------------------------------------------*
 *& Module Pool      ZAFT_SELA_B_MP_1
 *&---------------------------------------------------------------------*
-*&
+*Ez a program a ZDEV7_EKKOEKPO táblában tárolt beszerzési rendelési adatokat kezeli és jeleníti meg.
+*Az adatokat az adatbázisból tölti be, és lehetőséget biztosít a felhasználónak bizonyos mezők módosítására egy ALV-ben.
+*Az "XLOEKZ" (Törlés előjegyzés) oszlop egy jelölőnégyzet, amely bejelölés esetén törlésre jelöli a rendelést.
+*Ha az XLOEKZ mező be van pipálva, akkor a "NETWR" (Beszerzési nettó érték) mező írásvédett lesz, és egy piros figyelmeztető ikon jelenik meg.
+*Ha az XLOEKZ mező nincs bejelölve, a NETWR mező ismét szerkeszthetővé válik, és egy zöld ikon jelenik meg.
+*A program tartalmaz egy "Mentés" és egy "Frissítés" gombot. Az utóbbi újratölti az adatokat, miközben megtartja a felhasználói módosításokat,
+*de visszaállítja az ikonokat és a színeket, az előbbi pedig menti a módosított NETWR adatokat a fő (ZDEV7_EKKOEKPO) táblába.
+*Az ALV dinamikusan frissíti a színeket és stílusokat a felhasználói bemenet és az üzleti szabályok alapján.
 *&---------------------------------------------------------------------*
-PROGRAM zaft_sela_b_mp_1.
 
-*----------------------------------------------------------------DB-DECLARATIONS------------------------------------------------------------
-TABLES: ekpo, ekko, zdev7_ekkoekpo.
+PROGRAM zaft_sela_b_mp_1.
+*----------------------------------------------------------------ADATBÁZIS DEKLARÁCIÓK------------------------------------------------------------
+
+TABLES: ekpo, ekko, zdev7_ekkoekpo, zdev7_ekkoekpo_o.
 DATA it_zdev7_ekkoekpo TYPE TABLE OF zdev7_ekkoekpo.
-DATA it_zdev7_ekkoekpo_origin TYPE TABLE OF zdev7_ekkoekpo.
+DATA it_zdev7_ekkoekpo_origin TYPE TABLE OF zdev7_ekkoekpo_o.
 DATA gt_outtab TYPE TABLE OF zdev7_013_ekkoekpo. " ez egy munka-struktúra amely a stílus elemek miatt lett létrehozva
 DATA ls_outtab TYPE zdev7_013_ekkoekpo.
+*---------------------------------------------------------------TOVÁBBI DEKLARÁCIÓK-----------------------------------------------------------
 
-*---------------------------------------------------------------OTHER-DECLARATIONS-----------------------------------------------------------
 INCLUDE <cl_alv_control>.
 
 CLASS lcl_event_handler DEFINITION DEFERRED.
@@ -31,48 +39,16 @@ DATA save_ok_code LIKE sy-ucomm.
 DATA rb_alv(1) TYPE c VALUE 'X'.
 DATA rb_upl(1) TYPE c.
 DATA: p_xloekz TYPE c LENGTH 1.
-"RANGES: gr_ebeln FOR ekpo-ebeln,
-"    gt_ebelp      FOR ekpo-ebelp,
-"     gt_bukrs      FOR ekko-bukrs,
-"     gt_bstyp      FOR ekko-bstyp,
-"      gt_bsart     FOR ekko-bsart.
-
-"DATA: gt_ebeln      TYPE RANGE OF ekpo-ebeln,
-"      gt_ebelp      TYPE RANGE OF ekpo-ebelp,
-"      gt_bukrs      TYPE RANGE OF ekko-bukrs,
-"      gt_bstyp      TYPE RANGE OF ekko-bstyp,
-"      gt_bsart      TYPE RANGE OF ekko-bsart,
-
-"      gt2_ebeln     TYPE RANGE OF ekpo-ebeln,
-"      gt2_ebelp     TYPE RANGE OF ekpo-ebelp,
-"      gt2_bukrs     TYPE RANGE OF ekko-bukrs,
-"      gt2_bstyp     TYPE RANGE OF ekko-bstyp,
-"      gt2_bsart     TYPE RANGE OF ekko-bsart,
-
-"      so_ebeln_low  TYPE ebeln,
-"      so_ebeln_high TYPE ebeln,
-"      so_ebelp_low  TYPE ebelp,
-"      so_ebelp_high TYPE ebelp,
-"      so_bukrs_low  TYPE bukrs,
-"      so_bukrs_high TYPE bukrs,
-"      so_bstyp_low  TYPE bstyp,
-"      so_bstyp_high TYPE bstyp,
-"      so_bsart_low  TYPE bsart,
-"      so_bsart_high TYPE bsart.
 *--------------------------------------------------------------------------------LCL_EVENT_HANDLER CLASS-------------------------------------------------------------------------------
+
 CLASS lcl_event_handler DEFINITION.
   PUBLIC SECTION.
     METHODS
       on_data_changed FOR EVENT data_changed OF cl_gui_alv_grid
         IMPORTING
           er_data_changed.
-*    METHODS
-*      catch_doubleclick FOR EVENT double_click OF cl_gui_alv_grid
-*        IMPORTING
-*          e_column
-*          es_row_no
-*          sender.
 ENDCLASS.
+
 CLASS lcl_event_handler IMPLEMENTATION.
   METHOD on_data_changed.
     DATA: lt_mod_cells TYPE lvc_t_modi,
@@ -99,15 +75,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
             ENDLOOP.
           ENDIF.
         ENDIF.
-
       ELSEIF   ls_mod_cell-fieldname = 'NETWR'.
-        CLEAR lt_mod_cells.
-        APPEND INITIAL LINE TO lt_mod_cells ASSIGNING FIELD-SYMBOL(<fs_cell2>).
-        <fs_cell2>-row_id = ls_mod_cell-row_id.
-        <fs_cell2>-fieldname = 'NETWR'.
-        <fs_cell2>-value = ls_mod_cell-value.
-        APPEND <fs_cell2> TO lt_mod_cells.
-
         " Színezés a feladat alapján. Átláthatóság miatt neveztem <fs_outtab2>-nek.
         DATA(lv_netwr) = CONV netwr( ls_mod_cell-value ). "Színezéshez NETWR konvertálása számformátumba
         READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab2>) INDEX ls_mod_cell-row_id.
@@ -120,9 +88,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
       ENDIF.
     ENDLOOP.
     go_grid->refresh_table_display( i_soft_refresh = 'X' ).
-    " Módosítások alkalmazása az ALV-ben
-    er_data_changed->mt_mod_cells = lt_mod_cells.
-  
+
     "A kurzor beállítása
     DATA: ls_row_id TYPE lvc_s_row,
           ls_col_id TYPE lvc_s_col.
@@ -138,8 +104,8 @@ CLASS lcl_event_handler IMPLEMENTATION.
   ENDMETHOD.
 
 ENDCLASS.
+*----------------------------------------------------------------SUBSCREEN-SZELEKCIÓS MEZŐ--------------------------------------------------
 
-"*----------------------------------------------------------------SUBSCREEN-SELECTION-SCREEN--------------------------------------------------
 SELECTION-SCREEN: BEGIN OF SCREEN 200 AS SUBSCREEN.
 
   SELECT-OPTIONS: gt_ebeln FOR ekpo-ebeln DEFAULT '4500106625' TO '4500106631' ,
@@ -147,21 +113,11 @@ SELECTION-SCREEN: BEGIN OF SCREEN 200 AS SUBSCREEN.
                   gt_bukrs FOR ekko-bukrs,
                   gt_bstyp FOR ekko-bstyp,
                   gt_bsart FOR ekko-bsart.
-
 SELECTION-SCREEN: END OF SCREEN 200.
-"AT SELECTION-SCREEN ON VALUE-REQUEST FOR gt_ebeln.
-"  CLEAR: gt_ebeln, gt_ebelp, gt_bukrs, gt_bstyp, gt_bsart.
-"  REFRESH: gt_ebeln, gt_ebelp, gt_bukrs, gt_bstyp, gt_bsart.
+*--------------------------------------------------------------SZUBROUTINOK------------------------------------------------------------------
 
-"SELECTION-SCREEN: BEGIN OF SCREEN 300 AS SUBSCREEN.
-"  PARAMETERS: p_xloekz AS CHECKBOX USER-COMMAND a.
-"  PARAMETERS: rb_upl RADIOBUTTON GROUP g1,
-"              rb_alv RADIOBUTTON GROUP g1 .
-"SELECTION-SCREEN: END OF SCREEN 300.
-*--------------------------------------------------------------SUBROUTINES------------------------------------------------------------------
-
-FORM upload_zdev7ekkoekpo USING xt_ekkoekpo TYPE STANDARD TABLE.
-  DELETE FROM  zdev7_ekkoekpo.
+FORM upload_zdev7ekkoekpo_o USING xt_ekkoekpo TYPE STANDARD TABLE.
+  DELETE FROM  zdev7_ekkoekpo_o.
   SELECT a~ebeln, a~bukrs, a~bstyp,
        a~bsart, a~aedat,
        b~ebelp,
@@ -176,15 +132,32 @@ FORM upload_zdev7ekkoekpo USING xt_ekkoekpo TYPE STANDARD TABLE.
           AND a~bukrs IN @gt_bukrs
           AND a~bstyp IN @gt_bstyp
           AND a~bsart IN @gt_bsart.
-  INSERT zdev7_ekkoekpo FROM TABLE @xt_ekkoekpo.
+  INSERT zdev7_ekkoekpo_o FROM TABLE @xt_ekkoekpo.
 ENDFORM.
 
-FORM fetch_data_zdev7ekkoekpo USING xt_outtab TYPE STANDARD TABLE
-                             CHANGING backup_outtab TYPE STANDARD TABLE.
+FORM fetch_data_zdev7ekkoekpo CHANGING  xt_outtab  TYPE STANDARD TABLE
+                              backup_outtab TYPE STANDARD TABLE.
   FIELD-SYMBOLS: <fs_outtab> LIKE ls_outtab.
   DATA: xv_diff   TYPE char1,
         ls_backup TYPE zdev7_ekkoekpo.
-
+  "Feltöltjük a zdev7_ekkoekpo adatbázis táblát
+  DELETE FROM  zdev7_ekkoekpo.
+  SELECT a~ebeln, a~bukrs, a~bstyp,
+       a~bsart, a~aedat,
+       b~ebelp,
+       b~txz01, b~matnr, b~ematn, b~bukrs AS bukrs2,
+       b~werks, b~lgort, b~matkl, b~infnr, b~idnlf,
+       b~ktmng, b~menge, b~meins, b~netwr
+    INTO CORRESPONDING FIELDS OF TABLE @it_zdev7_ekkoekpo
+    FROM ekko AS a
+    INNER JOIN ekpo AS b ON a~ebeln = b~ebeln
+    WHERE     a~ebeln IN @gt_ebeln
+          AND b~ebelp IN @gt_ebelp
+          AND a~bukrs IN @gt_bukrs
+          AND a~bstyp IN @gt_bstyp
+          AND a~bsart IN @gt_bsart.
+  INSERT zdev7_ekkoekpo FROM TABLE @it_zdev7_ekkoekpo.
+  "feltöltjük tulajdonképpen a gt_outtab-et
   SELECT a~ebeln, a~bukrs, CAST( a~bstyp AS CHAR ) AS bstyp,
          a~bsart, a~aedat,
          CAST( b~ebelp AS NUMC ) AS ebelp,
@@ -200,9 +173,7 @@ FORM fetch_data_zdev7ekkoekpo USING xt_outtab TYPE STANDARD TABLE
       AND a~bukrs IN @gt_bukrs
       AND a~bstyp IN @gt_bstyp
       AND a~bsart IN @gt_bsart.
-  "  CLEAR xt_outtab.
   " elmentjük az eredeti szelekciót
-
   CLEAR backup_outtab.
   LOOP AT xt_outtab ASSIGNING FIELD-SYMBOL(<fs_xt>).
     "DATA(ls_backup) = backup_outtab.  " Új rekord inicializálása
@@ -218,9 +189,7 @@ FORM fetch_data_zdev7ekkoekpo USING xt_outtab TYPE STANDARD TABLE
         ev_difference = xv_diff.
     IF p_xloekz = 'X'.
       <fs_outtab>-xloekz = 'X'.
-
       IF <fs_outtab>-xloekz = 'X'.
-
         <fs_outtab>-lamp_icon = '@0A@'.  "Piros lámpa ha van törlés előjegyezve
       ELSEIF  xv_diff = 'X'.
         <fs_outtab>-lamp_icon = '@09@'. " sárga lámpa ha van eltérés
@@ -256,20 +225,17 @@ FORM sor_szinezes USING    xv_matnr TYPE matnr
                           xv_netwr TYPE netwr
                   CHANGING cv_color TYPE char4.
   IF xv_matnr IS NOT INITIAL AND xv_netwr = 0.
-    ls_outtab-color = 'C710'. " PIROS
-  ELSEIF xv_netwr IS NOT INITIAL.
-    cv_color = 'C710'. "
+    cv_color = 'C710'. " PIROS
   ELSEIF xv_netwr = 0.
-    ls_outtab-color = 'C310'. " SÁRGA
+    cv_color = 'C310'. " SÁRGA
   ELSEIF xv_matnr IS NOT INITIAL.
-    ls_outtab-color = 'C210'. " ZÖLD
+    cv_color = 'C501'. " ZÖLD
   ENDIF.
 ENDFORM.
 
 FORM netwr_kezdeti_allithatosag USING xw_xloekz TYPE eloek
                                       xw_output LIKE ls_outtab
                                 CHANGING celltab TYPE lvc_t_styl.
-
   DATA: xt_celltab TYPE lvc_t_styl,
         xs_celltab TYPE lvc_s_styl.
   IF xw_xloekz = 'X'.
@@ -297,21 +263,19 @@ FORM fieldcat_layout_init USING xt_fieldcat TYPE lvc_t_fcat.
       ct_fieldcat        = xt_fieldcat.
   LOOP AT xt_fieldcat INTO xs_fieldcat.
     CASE xs_fieldcat-fieldname.
-      WHEN 'LAMP_ICON'. " Új ikon mező
+      WHEN 'LAMP_ICON'.
         xs_fieldcat-icon = 'X'.
         xs_fieldcat-scrtext_s = 'Stát.'.
         xs_fieldcat-scrtext_m = 'Státusz ikon'.
         xs_fieldcat-scrtext_l = 'Rekord státusza'.
         MODIFY xt_fieldcat FROM xs_fieldcat INDEX sy-tabix.
       WHEN 'NETWR'.
-        xs_fieldcat-edit = cl_gui_alv_grid=>mc_style_enabled.
         xs_fieldcat-style = alv_style_font_bold.
         MODIFY xt_fieldcat FROM xs_fieldcat INDEX sy-tabix.
       WHEN 'XLOEKZ'.
         xs_fieldcat-edit = 'X'.
         xs_fieldcat-checkbox = 'X'.
         xs_fieldcat-outputlen = 1.
-*        xs_fieldcat-hotspot = 'X'.
         xs_fieldcat-scrtext_s = 'Törl.'.
         xs_fieldcat-scrtext_m = 'Törlési e.'.
         xs_fieldcat-scrtext_l = 'Törlési előjegyzés'.
@@ -326,40 +290,9 @@ FORM fieldcat_layout_init USING xt_fieldcat TYPE lvc_t_fcat.
   ENDLOOP.
   layout-info_fname = 'COLOR'.
   layout-stylefname = 'CELLTAB'.
+  layout-cwidth_opt = 'X'.
 ENDFORM.
-
-"FORM load_range_values USING "VALUE(rt_range) LIKE gr_ebeln  " <------------ ezt hogy a fenébe kéne deklarálni, hogy ílyen legyen ????
-""
-"                             rv_low   TYPE any
-"                             rv_high  TYPE any.
-
-"  DATA: ls_range TYPE gr_ebeln.
-"  gr_ebeln-sign = 'I'.
-"  gr_ebeln-options = 'EQ'.
-"  gr_ebeln-low = rv_low.
-"  gr_ebeln-high = rv_high.
-"  APPEND gr_ebeln.
-"  CLEAR: rv_low, rv_high.
-"  READ TABLE rt_range INTO ls_range INDEX 1.
-"  IF sy-subrc = 0.
-"    rv_low  = ls_range-low.
-"    rv_high = ls_range-high.
-"  ENDIF.
-"ENDFORM.
-
-
-"FORM save_range_values USING rt_range TYPE STANDARD TABLE
-"                             rv_low   TYPE any
-"                             rv_high  TYPE any.
-"  CLEAR rt_range.
-"  IF rv_low IS NOT INITIAL OR rv_high IS NOT INITIAL.
-"    APPEND INITIAL LINE TO rt_range ASSIGNING FIELD-SYMBOL(<fs>).
-"    <fs>-sign   = 'I'.
-"    <fs>-option = 'BT'.  " Between – tartományos keresés
-"    <fs>-low    = rv_low.
-"    <fs>-high   = rv_high.
-"  ENDIF.
-"ENDFORM.
+*--------------------------------------------------------------------------------------INCLUDE-OK----------------------------------------------------------------------------------
 
 INCLUDE zaft_sela_b_mp_1_status_010o01.
 
@@ -373,8 +306,6 @@ INCLUDE zaft_sela_b_mp_1_pbo_101o01.
 
 INCLUDE zaft_sela_b_mp_1_user_commai02.
 
-"INCLUDE zaft_sela_b_mp_1_exit_101i01.
-
 
 INCLUDE zaft_sela_b_mp_1_pbo_load_ro01.
 
@@ -382,11 +313,7 @@ INCLUDE zaft_sela_b_mp_1_clear_sel_o01.
 
 INCLUDE zaft_sela_b_mp_1_exit_101i02.
 
-
-
 INCLUDE zaft_sela_b_mp_1_hide_xloeko02.
-
-"INCLUDE zaft_sela_b_mp_1_customize_o01.
 
 *-----------------------------------------------------------------101-screen----------------------------------------------------------------
 
