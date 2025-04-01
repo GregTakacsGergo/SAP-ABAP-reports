@@ -1,6 +1,15 @@
 *&---------------------------------------------------------------------*
 *& Module Pool      ZAFT_SELA_B_MP_1
 *&---------------------------------------------------------------------*
+*This ABAP program displays and manages purchase order data stored in the ZDEV7_EKKOEKPO table.
+*It retrieves data from the database and allows the user to modify specific fields in an ALV grid.
+*The "Deletion Flag" (XLOEKZ) column is a checkbox that, when selected, marks the order for deletion.
+*If XLOEKZ is checked, the "Net Order Value" (NETWR) field becomes read-only, and a red warning icon is displayed.
+*If XLOEKZ is unchecked, the NETWR field becomes editable again, and a green icon appears.
+*The program includes a refresh button, which reloads the data while keeping the user's changes but resetting the grid’s colors and icons, 
+*and a "Save" button, which saves the modified NETWR data to the main (ZDEV7_EKKOEKPO) table.
+*The ALV grid dynamically updates colors and styles based on the user's input and business rules.
+*&---------------------------------------------------------------------*
 *Ez a program a ZDEV7_EKKOEKPO táblában tárolt beszerzési rendelési adatokat kezeli és jeleníti meg.
 *Az adatokat az adatbázisból tölti be, és lehetőséget biztosít a felhasználónak bizonyos mezők módosítására egy ALV-ben.
 *Az "XLOEKZ" (Törlés előjegyzés) oszlop egy jelölőnégyzet, amely bejelölés esetén törlésre jelöli a rendelést.
