@@ -10,6 +10,8 @@
 *and a "Save" button, which saves the modified NETWR data to the main (ZDEV7_EKKOEKPO) table.
 *The ALV grid dynamically updates colors and styles based on the user's input and business rules.
 *&---------------------------------------------------------------------*
+*& Module Pool      ZAFT_SELA_B_MP_1
+*&---------------------------------------------------------------------*
 *Ez a program a ZDEV7_EKKOEKPO táblában tárolt beszerzési rendelési adatokat kezeli és jeleníti meg.
 *Az adatokat az adatbázisból tölti be, és lehetőséget biztosít a felhasználónak bizonyos mezők módosítására egy ALV-ben.
 *Az "XLOEKZ" (Törlés előjegyzés) oszlop egy jelölőnégyzet, amely bejelölés esetén törlésre jelöli a rendelést.
@@ -25,6 +27,7 @@ PROGRAM zaft_sela_b_mp_1.
 
 TABLES: ekpo, ekko, zdev7_ekkoekpo, zdev7_ekkoekpo_o.
 DATA it_zdev7_ekkoekpo TYPE TABLE OF zdev7_ekkoekpo.
+DATA it_zdev7_ekkoekpo_load_from TYPE TABLE OF zdev7_ekkoekpo.
 DATA it_zdev7_ekkoekpo_origin TYPE TABLE OF zdev7_ekkoekpo_o.
 DATA gt_outtab TYPE TABLE OF zdev7_013_ekkoekpo. " ez egy munka-struktúra amely a stílus elemek miatt lett létrehozva
 DATA ls_outtab TYPE zdev7_013_ekkoekpo.
@@ -145,7 +148,8 @@ FORM upload_zdev7ekkoekpo_o USING xt_ekkoekpo TYPE STANDARD TABLE.
 ENDFORM.
 
 FORM fetch_data_zdev7ekkoekpo CHANGING  xt_outtab  TYPE STANDARD TABLE
-                              backup_outtab TYPE STANDARD TABLE.
+                                        save_to_load_from TYPE STANDARD TABLE.
+
   FIELD-SYMBOLS: <fs_outtab> LIKE ls_outtab.
   DATA: xv_diff   TYPE char1,
         ls_backup TYPE zdev7_ekkoekpo.
@@ -182,12 +186,12 @@ FORM fetch_data_zdev7ekkoekpo CHANGING  xt_outtab  TYPE STANDARD TABLE
       AND a~bukrs IN @gt_bukrs
       AND a~bstyp IN @gt_bstyp
       AND a~bsart IN @gt_bsart.
-  " elmentjük az eredeti szelekciót
-  CLEAR backup_outtab.
+  " elmentjük az eredeti szelekciót a it_zdev7_ekkoekpo_load_from-ba igazából
+  CLEAR save_to_load_from.
   LOOP AT xt_outtab ASSIGNING FIELD-SYMBOL(<fs_xt>).
     "DATA(ls_backup) = backup_outtab.  " Új rekord inicializálása
     MOVE-CORRESPONDING <fs_xt> TO ls_backup.  " Csak a közös mezőket másoljuk
-    APPEND ls_backup TO backup_outtab.
+    APPEND ls_backup TO save_to_load_from.
   ENDLOOP.
   LOOP AT xt_outtab ASSIGNING <fs_outtab>.
     " Meghívjuk a funkciós modult, hogy kiderüljön, van-e eltérés
@@ -208,9 +212,9 @@ FORM fetch_data_zdev7ekkoekpo CHANGING  xt_outtab  TYPE STANDARD TABLE
       PERFORM sor_szinezes USING   <fs_outtab>-matnr
                                    <fs_outtab>-netwr
                           CHANGING <fs_outtab>-color.
-      PERFORM netwr_kezdeti_allithatosag USING <fs_outtab>-xloekz
-                                      ls_outtab
-                                      CHANGING <fs_outtab>-celltab.
+      PERFORM netwr_kezdeti_allithatosag CHANGING <fs_outtab>-xloekz
+                                                  ls_outtab
+                                                  <fs_outtab>-celltab.
     ELSEIF p_xloekz = ''.
       <fs_outtab>-xloekz = ''.
       IF <fs_outtab>-xloekz = ''.
@@ -223,9 +227,9 @@ FORM fetch_data_zdev7ekkoekpo CHANGING  xt_outtab  TYPE STANDARD TABLE
       PERFORM sor_szinezes USING   <fs_outtab>-matnr
                                    <fs_outtab>-netwr
                           CHANGING <fs_outtab>-color.
-      PERFORM netwr_kezdeti_allithatosag USING <fs_outtab>-xloekz
-                                      ls_outtab
-                                      CHANGING <fs_outtab>-celltab.
+      PERFORM netwr_kezdeti_allithatosag CHANGING <fs_outtab>-xloekz
+                                                   ls_outtab
+                                                  <fs_outtab>-celltab.
     ENDIF.
   ENDLOOP.
 ENDFORM.
@@ -242,9 +246,9 @@ FORM sor_szinezes USING    xv_matnr TYPE matnr
   ENDIF.
 ENDFORM.
 
-FORM netwr_kezdeti_allithatosag USING xw_xloekz TYPE eloek
-                                      xw_output LIKE ls_outtab
-                                CHANGING celltab TYPE lvc_t_styl.
+FORM netwr_kezdeti_allithatosag CHANGING xw_xloekz TYPE eloek
+                                         xw_output LIKE ls_outtab
+                                         celltab TYPE lvc_t_styl.
   DATA: xt_celltab TYPE lvc_t_styl,
         xs_celltab TYPE lvc_s_styl.
   IF xw_xloekz = 'X'.
@@ -315,7 +319,6 @@ INCLUDE zaft_sela_b_mp_1_pbo_101o01.
 
 INCLUDE zaft_sela_b_mp_1_user_commai02.
 
-
 INCLUDE zaft_sela_b_mp_1_pbo_load_ro01.
 
 INCLUDE zaft_sela_b_mp_1_clear_sel_o01.
@@ -362,7 +365,7 @@ DATA:   "ET_MISMATCHED_ROWS TYPE ZGER_EKKOEKPO,
       EV_DIFFERENCE = ''.
     ENDIF.
   ENDLOOP.
-  
+
   " Eltérések visszaadása
   "ET_MISMATCHED_ROWS = lt_result.
 ENDFUNCTION.
