@@ -23,6 +23,7 @@ DATA: gt_ekko         TYPE TABLE OF ekko,
       g_okcode_100    TYPE syucomm,
       ok_code         TYPE syucomm.
 DATA: gv_selected_row TYPE sy-tabix.
+DATA: display_empty_tc        TYPE c.
 
 TYPES: BEGIN OF ty_tc,
          sel   TYPE c,           "Egyszeres jelölő sor miatt kell
@@ -34,8 +35,9 @@ TYPES: BEGIN OF ty_tc,
          netpr TYPE ekpo-netpr,  "Nettó ár
          waers TYPE ekko-waers,  "Pénznem
        END OF ty_tc.
-DATA: lt_tc TYPE TABLE OF ty_tc,
-      wa_tc TYPE ty_tc.
+DATA: lt_tc      TYPE TABLE OF ty_tc,        " Table Control belső tábla
+      lt_tc_full TYPE TABLE OF ty_tc,   " Eredeti adatok tárolására
+      wa_tc      type ty_tc.
 
 *----------------------------------------------------------------------SUBROUTINES---------------------------------------------------------------------------------
 
@@ -49,28 +51,32 @@ FORM read_data.
 ENDFORM.
 
 FORM get_item_data_form.
-  CLEAR lt_tc.
+  IF lt_tc IS INITIAL AND display_empty_tc = 'X'. " ha a szűrés alatt nincs több érték, üres legyen majd a table control
+    CLEAR lt_tc.
+  ELSEIF lt_tc IS INITIAL. "AND empty_tc = 'X'.
+    SELECT ekpo~ebelp, ekpo~matnr, ekpo~txz01, ekpo~menge, ekpo~meins, ekpo~netpr, ekko~waers
+    INTO CORRESPONDING FIELDS OF TABLE @lt_tc
+    FROM ekpo
+    JOIN ekko ON ekpo~ebeln = ekko~ebeln
+    WHERE ekpo~ebeln = @p_ebeln.
 
-  SELECT ekpo~ebelp, ekpo~matnr, ekpo~txz01, ekpo~menge, ekpo~meins, ekpo~netpr, ekko~waers
-  INTO CORRESPONDING FIELDS OF TABLE @lt_tc
-  FROM ekpo
-  JOIN ekko ON ekpo~ebeln = ekko~ebeln
-  WHERE ekpo~ebeln = @p_ebeln.
+    lt_tc_full = lt_tc.
+  ENDIF.
 ENDFORM.
 
 FORM filter_table_control.
   DATA: lt_filtered TYPE TABLE OF ty_tc.
-
   " Ha van szűrési feltétel
   IF p_netpr IS NOT INITIAL.
     DELETE lt_tc WHERE netpr >= p_netpr. " Csak az alacsonyabb értékűeket hagyjuk meg
-  ELSE.
+    IF lt_tc IS INITIAL.
+      display_empty_tc = 'X'.
+    ENDIF.
+    CLEAR p_netpr.
+  ELSEIF p_netpr IS INITIAL.
     " Ha nincs szűrés, töltsük vissza az eredeti adatokat
-    PERFORM get_item_data_form.
+      lt_tc = lt_tc_full.
   ENDIF.
-
-  " Frissítsük a Table Control-t
-  CALL SCREEN sy-dynnr.
 ENDFORM.
 *----------------------------------------------------------------------FLOW LOGIC INCLUDE MODULES-------------------------------------------------------------------
 
