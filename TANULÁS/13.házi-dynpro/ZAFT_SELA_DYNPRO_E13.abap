@@ -22,7 +22,6 @@ DATA: gt_ekko         TYPE TABLE OF ekko,
       gv_item_count   TYPE i,
       g_okcode_100    TYPE syucomm,
       ok_code         TYPE syucomm.
-DATA: gv_selected_row TYPE sy-tabix.
 DATA: display_empty_tc        TYPE c.
 
 TYPES: BEGIN OF ty_tc,
@@ -35,7 +34,7 @@ TYPES: BEGIN OF ty_tc,
          netpr TYPE ekpo-netpr,  "Nettó ár
          waers TYPE ekko-waers,  "Pénznem
        END OF ty_tc.
-       
+
 DATA: lt_tc                TYPE TABLE OF ty_tc,        " Table Control belső tábla
       lt_tc_full           TYPE TABLE OF ty_tc,   " Eredeti adatok tárolására
       wa_tc                TYPE ty_tc,
@@ -44,13 +43,17 @@ CONTROLS: TETELADATOK TYPE TABLEVIEW USING SCREEN 400. " ki kellett ide hozni, m
 *----------------------------------------------------------------------SUBROUTINES---------------------------------------------------------------------------------
 
 FORM read_data.
-  " visszaadja a szelekciónál beírt ebeln-t a 200-as screenen
-  SELECT SINGLE * FROM ekko INTO gs_ekko
-  WHERE ebeln EQ p_ebeln.
-
-  SELECT * FROM ekpo INTO TABLE gt_ekpo
+    " visszaadja a szelekciónál beírt ebeln-t a 200-as screenen
+    IF p_ebeln IS INITIAL.
+      MESSAGE 'Add meg a rendelésszámot (EBELN)!' TYPE 'S'.
+      RETURN.
+    ENDIF.
+    SELECT SINGLE * FROM ekko INTO gs_ekko
     WHERE ebeln EQ p_ebeln.
-ENDFORM.
+  
+    SELECT * FROM ekpo INTO TABLE gt_ekpo
+      WHERE ebeln EQ p_ebeln.
+  ENDFORM.
 
 FORM get_item_data_form.
   IF lt_tc IS INITIAL AND display_empty_tc = 'X'. " ha a szűrés alatt nincs több érték, üres legyen majd a table control
