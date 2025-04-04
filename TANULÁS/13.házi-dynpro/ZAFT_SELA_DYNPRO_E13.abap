@@ -65,19 +65,31 @@ FORM get_item_data_form.
 ENDFORM.
 
 FORM filter_table_control.
-  DATA: lt_filtered TYPE TABLE OF ty_tc.
-  " Ha van szűrési feltétel
-  IF p_netpr IS NOT INITIAL.
-    DELETE lt_tc WHERE netpr >= p_netpr. " Csak az alacsonyabb értékűeket hagyjuk meg
-    IF lt_tc IS INITIAL.
-      display_empty_tc = 'X'.
+    DATA: lt_filtered       TYPE TABLE OF ty_tc,
+          lv_excluded_count TYPE i.
+    " Ha van szűrési feltétel
+    IF p_netpr IS NOT INITIAL.
+  
+      LOOP AT lt_tc INTO DATA(ls_tc) WHERE netpr >= p_netpr." másoljuk ki a kizárt tételeket
+        APPEND ls_tc TO lt_filtered.
+      ENDLOOP.
+  
+      DELETE lt_tc WHERE netpr >= p_netpr. " Csak az alacsonyabb értékűeket hagyjuk meg
+  
+      lv_excluded_count = lines( lt_filtered ). " Írjuk ki a kizárt tételek számát a kimeneti mezőbe
+      kizart_tetelek_szama = lv_excluded_count.
+  
+      IF lt_tc IS INITIAL.
+        display_empty_tc = 'X'.
+      ENDIF.
+  
+      CLEAR p_netpr.
+    ELSEIF p_netpr IS INITIAL.
+  
+      lt_tc = lt_tc_full. " Ha nincs szűrés, töltsük vissza az eredeti adatokat
+      CLEAR kizart_tetelek_szama.
     ENDIF.
-    CLEAR p_netpr.
-  ELSEIF p_netpr IS INITIAL.
-    " Ha nincs szűrés, töltsük vissza az eredeti adatokat
-      lt_tc = lt_tc_full.
-  ENDIF.
-ENDFORM.
+  ENDFORM.
 *----------------------------------------------------------------------FLOW LOGIC INCLUDE MODULES-------------------------------------------------------------------
 
 INCLUDE zaft_sela_dynpro_e13_statuso01.
