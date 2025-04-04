@@ -35,10 +35,12 @@ TYPES: BEGIN OF ty_tc,
          netpr TYPE ekpo-netpr,  "Nettó ár
          waers TYPE ekko-waers,  "Pénznem
        END OF ty_tc.
-DATA: lt_tc      TYPE TABLE OF ty_tc,        " Table Control belső tábla
-      lt_tc_full TYPE TABLE OF ty_tc,   " Eredeti adatok tárolására
-      wa_tc      type ty_tc.
-
+       
+DATA: lt_tc                TYPE TABLE OF ty_tc,        " Table Control belső tábla
+      lt_tc_full           TYPE TABLE OF ty_tc,   " Eredeti adatok tárolására
+      wa_tc                TYPE ty_tc,
+      kizart_tetelek_szama TYPE i.
+CONTROLS: TETELADATOK TYPE TABLEVIEW USING SCREEN 400. " ki kellett ide hozni, mert az include-ból nem találta meg a PERFORM get_mat_data!
 *----------------------------------------------------------------------SUBROUTINES---------------------------------------------------------------------------------
 
 FORM read_data.
@@ -88,6 +90,20 @@ FORM filter_table_control.
   
       lt_tc = lt_tc_full. " Ha nincs szűrés, töltsük vissza az eredeti adatokat
       CLEAR kizart_tetelek_szama.
+    ENDIF.
+  ENDFORM.
+
+FORM get_mat_data USING lv_index.
+    DATA: lv_matnr TYPE matnr.
+  
+    " Kijelölt sorból vegyük ki a MATNR értéket
+    READ TABLE lt_tc INTO wa_tc INDEX lv_index.
+    IF sy-subrc = 0 AND wa_tc-matnr IS NOT INITIAL.
+      lv_matnr = wa_tc-matnr.
+      SET PARAMETER ID 'MAT' FIELD lv_matnr.
+      CALL TRANSACTION 'MM03' AND SKIP FIRST SCREEN.
+    ELSE.
+      MESSAGE 'Nincs anyagszám(MATNR)!' TYPE 'I'.
     ENDIF.
   ENDFORM.
 *----------------------------------------------------------------------FLOW LOGIC INCLUDE MODULES-------------------------------------------------------------------
