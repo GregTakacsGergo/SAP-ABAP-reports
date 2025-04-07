@@ -52,13 +52,14 @@ DATA rb_alv(1) TYPE c VALUE 'X'.
 DATA rb_upl(1) TYPE c.
 DATA: p_xloekz TYPE c LENGTH 1.
 *--------------------------------------------------------------------------------LCL_EVENT_HANDLER CLASS-------------------------------------------------------------------------------
-
 CLASS lcl_event_handler DEFINITION.
   PUBLIC SECTION.
     METHODS
       on_data_changed FOR EVENT data_changed OF cl_gui_alv_grid
         IMPORTING
           er_data_changed.
+    METHODS
+      update_celltab_styles.
 ENDCLASS.
 
 CLASS lcl_event_handler IMPLEMENTATION.
@@ -99,8 +100,9 @@ CLASS lcl_event_handler IMPLEMENTATION.
         ENDIF.
       ENDIF.
     ENDLOOP.
+    me->update_celltab_styles( ).
     go_grid->refresh_table_display( i_soft_refresh = 'X' ).
-
+    
     "A kurzor beállítása
     DATA: ls_row_id TYPE lvc_s_row,
           ls_col_id TYPE lvc_s_col.
@@ -113,6 +115,20 @@ CLASS lcl_event_handler IMPLEMENTATION.
         is_row_id = ls_row_id
         is_column_id = ls_col_id
     ).
+  ENDMETHOD.
+
+  METHOD update_celltab_styles.
+    DATA: ls_celltab TYPE lvc_s_styl.
+    LOOP AT gt_outtab ASSIGNING FIELD-SYMBOL(<fs_row>).
+      LOOP AT <fs_row>-celltab INTO ls_celltab.
+        IF <fs_row>-xloekz = 'X'.
+          ls_celltab-style = cl_gui_alv_grid=>mc_style_disabled.
+        ELSE.
+          ls_celltab-style = cl_gui_alv_grid=>mc_style_enabled.
+        ENDIF.
+        MODIFY <fs_row>-celltab FROM ls_celltab TRANSPORTING style.
+      ENDLOOP.
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.
@@ -562,7 +578,6 @@ MODULE user_command_0101 INPUT.
   ENDCASE.
 ENDMODULE.
 
-
 *-----------------------------------------------------------------100-screen----------------------------------------------------------------
 PROCESS BEFORE OUTPUT.
   MODULE status_0100. "MODULE clear_sel_fields.
@@ -581,11 +596,12 @@ PROCESS AFTER INPUT.
   CASE sy-ucomm.
     WHEN 'MEHET'.
       IF rb_alv = 'X'.
-        PERFORM fetch_data_zdev7ekkoekpo USING gt_outtab
-                                         CHANGING it_zdev7_ekkoekpo_origin.
+        PERFORM fetch_data_zdev7ekkoekpo CHANGING  gt_outtab
+                                                   it_zdev7_ekkoekpo_load_from.
         CALL SCREEN 101.
       ELSEIF rb_upl = 'X'.
-        PERFORM upload_zdev7ekkoekpo USING it_zdev7_ekkoekpo.
+        PERFORM upload_zdev7ekkoekpo_o USING it_zdev7_ekkoekpo_origin.
+        MESSAGE 'Szelekció szerint feltöltve a zdev7_ekkoekpo_o db-tábla.' TYPE 'I'.
       ENDIF.
 
   ENDCASE.
