@@ -62,6 +62,7 @@ CLASS lcl_event_handler DEFINITION.
       update_celltab_styles.
 ENDCLASS.
 
+
 CLASS lcl_event_handler IMPLEMENTATION.
   METHOD on_data_changed.
     DATA: lt_mod_cells TYPE lvc_t_modi,
@@ -73,6 +74,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
         DATA(lv_value) = ls_mod_cell-value.
         READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab>) INDEX ls_mod_cell-row_id.
         IF sy-subrc = 0.
+          <fs_outtab>-xloekz = lv_value. " az aktuális sor így frissül azonnal
           " Ha a checkbox be van pipálva, akkor NETWR readonly és LAMP_ICON piros
           IF lv_value = 'X'.
             <fs_outtab>-lamp_icon = '@0A@'.  " Piros ikon trafficlámpa
@@ -102,7 +104,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
     ENDLOOP.
     me->update_celltab_styles( ).
     go_grid->refresh_table_display( i_soft_refresh = 'X' ).
-    
+
     "A kurzor beállítása
     DATA: ls_row_id TYPE lvc_s_row,
           ls_col_id TYPE lvc_s_col.
@@ -117,7 +119,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
     ).
   ENDMETHOD.
 
-  METHOD update_celltab_styles.
+  METHOD update_celltab_styles. " azért fontos, mert a köv soron az xloekz pipálásakor már elfelejtette az előzően állított sor szerkeszthetőségét
     DATA: ls_celltab TYPE lvc_s_styl.
     LOOP AT gt_outtab ASSIGNING FIELD-SYMBOL(<fs_row>).
       LOOP AT <fs_row>-celltab INTO ls_celltab.
