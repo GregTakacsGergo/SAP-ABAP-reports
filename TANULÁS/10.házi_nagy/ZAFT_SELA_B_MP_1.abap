@@ -95,6 +95,21 @@ CLASS lcl_event_handler IMPLEMENTATION.
         DATA(lv_netwr) = CONV netwr( ls_mod_cell-value ). "Színezéshez NETWR konvertálása számformátumba
         READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab2>) INDEX ls_mod_cell-row_id.
         IF sy-subrc = 0.
+          " saját funkció, hogy eltérés van-e
+          DATA(xv_diff) = abap_false.
+          CALL FUNCTION 'ZDEV7_013_HOME_S01E10_NETWR'
+            EXPORTING
+              iv_netwr      = ls_mod_cell-value
+              iv_ebeln      = <fs_outtab2>-ebeln
+            IMPORTING
+              ev_difference = xv_diff.
+
+          " Ha eltérés van, akkor sárga lámpa
+          IF xv_diff = abap_true.
+            <fs_outtab2>-lamp_icon = '@09@'.  " 🟡 Sárga ikon
+          ELSE.
+            <fs_outtab2>-lamp_icon = '@08@'.  " 🟢 Zöld ikon
+          ENDIF.
           "Újraszínezés, mert másképp maradnának az előbbi szerkesztett tábla sor színezései!
           PERFORM sor_szinezes USING   <fs_outtab2>-matnr
                                      lv_netwr
