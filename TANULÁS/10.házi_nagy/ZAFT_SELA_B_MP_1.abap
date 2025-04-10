@@ -68,6 +68,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
     DATA: lt_mod_cells TYPE lvc_t_modi,
           ls_mod_cell  TYPE lvc_s_modi,
           ls_celltab   TYPE lvc_s_styl.
+    DATA(xv_diff) = abap_false.
 
     LOOP AT er_data_changed->mt_good_cells INTO ls_mod_cell.
       IF ls_mod_cell-fieldname = 'XLOEKZ'.
@@ -83,7 +84,19 @@ CLASS lcl_event_handler IMPLEMENTATION.
               MODIFY <fs_outtab>-celltab FROM ls_celltab TRANSPORTING style.
             ENDLOOP.
           ELSEIF lv_value = ''.
-            <fs_outtab>-lamp_icon = '@08@'.  " Alapértelmezett ikon ( zöld)
+            "            DATA(xv_diff) = abap_false.
+            CALL FUNCTION 'ZDEV7_013_HOME_S01E10_NETWR'
+              EXPORTING
+                iv_netwr      = ls_mod_cell-value
+                iv_ebeln      = <fs_outtab>-ebeln
+              IMPORTING
+                ev_difference = xv_diff.
+            IF xv_diff = abap_true.
+              <fs_outtab>-lamp_icon = '@09@'.  " 🟡 Sárga ikon
+            ELSE.
+              <fs_outtab>-lamp_icon = '@08@'.  " 🟢 Zöld ikon
+            ENDIF.
+            "           <fs_outtab>-lamp_icon = '@08@'.  " Alapértelmezett ikon ( zöld)
             LOOP AT <fs_outtab>-celltab INTO ls_celltab.
               ls_celltab-style = cl_gui_alv_grid=>mc_style_enabled.
               MODIFY <fs_outtab>-celltab FROM ls_celltab TRANSPORTING style.
@@ -96,7 +109,7 @@ CLASS lcl_event_handler IMPLEMENTATION.
         READ TABLE gt_outtab ASSIGNING FIELD-SYMBOL(<fs_outtab2>) INDEX ls_mod_cell-row_id.
         IF sy-subrc = 0.
           " saját funkció, hogy eltérés van-e
-          DATA(xv_diff) = abap_false.
+          "          DATA(xv_diff) = abap_false.
           CALL FUNCTION 'ZDEV7_013_HOME_S01E10_NETWR'
             EXPORTING
               iv_netwr      = ls_mod_cell-value
@@ -338,6 +351,26 @@ FORM fieldcat_layout_init USING xt_fieldcat TYPE lvc_t_fcat.
   layout-stylefname = 'CELLTAB'.
   layout-cwidth_opt = 'X'.
 ENDFORM.
+
+FORM get_data_for_hierseq.
+  "előbb egy táblába összerakjuk az összes adatot ami kell, és csak egyszer hívjuk meg a szubrutint
+  SELECT a~ebeln, a~bukrs, a~bstyp,
+       a~bsart, a~aedat,
+       b~ebelp,
+       b~txz01, b~matnr, b~ematn, b~bukrs AS bukrs2,
+       b~werks, b~lgort, b~matkl, b~infnr, b~idnlf,
+       b~ktmng, b~menge, b~meins, b~netwr
+    INTO CORRESPONDING FIELDS OF TABLE @it_zdev7_ekkoekpo_hierseq
+    FROM ekko AS a
+    INNER JOIN ekpo AS b ON a~ebeln = b~ebeln
+    WHERE     a~ebeln IN @gt_ebeln
+          AND b~ebelp IN @gt_ebelp
+          AND a~bukrs IN @gt_bukrs
+          AND a~bstyp IN @gt_bstyp
+          AND a~bsart IN @gt_bsart.
+
+ENDFORM.
+
 *--------------------------------------------------------------------------------------INCLUDE-OK----------------------------------------------------------------------------------
 
 INCLUDE zaft_sela_b_mp_1_status_010o01.
@@ -446,6 +479,9 @@ DATA:   "ET_MISMATCHED_ROWS TYPE ZGER_EKKOEKPO,
 
   "ET_MISMATCHED_ROWS = lt_result.
 ENDFUNCTION.
+*-----------------------------------------------------------------103-screen--------------------------------------------------------------------------------------
+
+
 *-----------------------------------------------------------------101-screen--------------------------------------------------------------------------------------
 
 PROCESS BEFORE OUTPUT.
