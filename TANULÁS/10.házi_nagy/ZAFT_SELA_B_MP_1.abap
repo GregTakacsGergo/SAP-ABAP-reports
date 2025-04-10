@@ -545,8 +545,30 @@ DATA:   "ET_MISMATCHED_ROWS TYPE ZGER_EKKOEKPO,
   "ET_MISMATCHED_ROWS = lt_result.
 ENDFUNCTION.
 *-----------------------------------------------------------------103-screen--------------------------------------------------------------------------------------
+PROCESS BEFORE OUTPUT.
+ MODULE STATUS_0103.
+ MODULE prep_hier_alv.
 
+*
+PROCESS AFTER INPUT.
+ MODULE exit_0103 AT EXIT-COMMAND.
+ MODULE USER_COMMAND_0103.
 
+*-----------
+ MODULE prep_hier_alv OUTPUT.
+  PERFORM display_hierseq_alv.
+ENDMODULE.
+*------------
+MODULE user_command_0103 INPUT.
+  CASE sy-ucomm.
+    WHEN 'BACK'.
+      LEAVE TO SCREEN 100.
+  ENDCASE.
+ENDMODULE.
+*------------
+MODULE exit_0103 INPUT.
+  LEAVE PROGRAM.
+ENDMODULE.
 *-----------------------------------------------------------------101-screen--------------------------------------------------------------------------------------
 
 PROCESS BEFORE OUTPUT.
