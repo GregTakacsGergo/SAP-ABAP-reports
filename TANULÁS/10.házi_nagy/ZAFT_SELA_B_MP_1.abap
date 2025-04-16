@@ -436,41 +436,18 @@ FORM display_hierseq_alv.
   ENDIF.
 
 ENDFORM.
-
+"nem használjuk!
 FORM display_hierseq_alv_bonya.
   DATA: lt_ekko TYPE TABLE OF zdev7_ekko,
         lt_ekpo TYPE TABLE OF zdev7_ekpo,
         ls_ekko TYPE zdev7_ekko,
         ls_ekpo TYPE zdev7_ekpo.
-*  DATA: lt_fieldcat_header TYPE slis_t_fieldcat_alv,
-*        lt_fieldcat_item   TYPE slis_t_fieldcat_alv,
-*        lt_fieldcat        TYPE slis_t_fieldcat_alv,
-*        ls_layout2         TYPE slis_layout_alv,
-*        ls_keyinfo         TYPE slis_keyinfo_alv.
+
   DATA: go_container_tree TYPE REF TO cl_gui_custom_container,
         go_tree           TYPE REF TO cl_gui_alv_tree.
 
   DATA: lt_fieldcat TYPE lvc_t_fcat,
         ls_fieldcat TYPE lvc_s_fcat.
-  "hierarchia beállítása
-  DATA:    ls_hierarchy_header TYPE treev_hhdr.
-  ls_hierarchy_header-heading   = 'Beszerzési rendelések'. " Ez jelenik meg a hierarchia tetején
-  ls_hierarchy_header-tooltip   = 'Beszerzési rendelés és tételei'.
-  ls_hierarchy_header-width     = 45.
-  ls_hierarchy_header-width_pix = ''.     " szülő-gyerek kapcsolat kulcsa
-
-
-  IF go_tree IS INITIAL.
-    IF go_container_tree IS INITIAL.
-      CREATE OBJECT go_container_tree
-        EXPORTING
-          container_name = 'CONTAINER_TREE'.  " Ez legyen az új konténer nevét tartalmazó képernyőelem
-    ENDIF.
-
-    CREATE OBJECT go_tree
-      EXPORTING
-        parent = go_container_tree.
-  ENDIF.
 
   "betöltjük a közös táblából az adatokat külön az lt_ekpo, és ekko-ba
   LOOP AT it_zdev7_ekkoekpo_hierseq INTO DATA(ls_row).
@@ -482,79 +459,110 @@ FORM display_hierseq_alv_bonya.
     MOVE-CORRESPONDING ls_row TO ls_ekpo.
     APPEND ls_ekpo TO lt_ekpo.
   ENDLOOP.
-** --- Fejléc (EKKO) mezők field catalog ---
-*  CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'
-*    EXPORTING
-*      i_structure_name = 'ZDEV7_EKKO'
-*    CHANGING
-*      ct_fieldcat      = lt_fieldcat_header.
-*
-** --- Tétel (EKPO) mezők field catalog ---
-*  CALL FUNCTION 'REUSE_ALV_FIELDCATALOG_MERGE'
-*    EXPORTING
-*      i_structure_name = 'ZDEV7_EKPO'
-*    CHANGING
-*      ct_fieldcat      = lt_fieldcat_item.
-*
-*  "egyesítsük a két mezőkatalógust
-*  CLEAR lt_fieldcat.
-*  APPEND LINES OF lt_fieldcat_header TO lt_fieldcat.
-*  APPEND LINES OF lt_fieldcat_item   TO lt_fieldcat.
-*
-*  ls_layout2-colwidth_optimize = 'X'.
-*  ls_keyinfo-header01 = 'EBELN'.
-*  ls_keyinfo-item01   = 'EBELN' .
 
-*    CALL FUNCTION 'REUSE_ALV_HIERSEQ_LIST_DISPLAY'
-*      EXPORTING
-*        is_layout               = ls_layout2
-*        it_fieldcat             = lt_fieldcat_item
-*        i_tabname_header        = 'lt_ekko'
-*        i_tabname_item          = 'lt_ekpo'
-*        i_structure_name_header = 'ZDEV7_EKKO'
-*        i_structure_name_item   = 'ZDEV7_EKPO'
-*        is_keyinfo              = ls_keyinfo
-*      TABLES
-*        t_outtab_header         = lt_ekko
-*        t_outtab_item           = lt_ekpo
-*      EXCEPTIONS
-*        program_error           = 1
-*        OTHERS                  = 2.
-*    IF sy-subrc <> 0.
-** Implement suitable error handling here
-*    ENDIF.
+  IF go_tree IS INITIAL.
+    IF go_container_tree IS INITIAL.
+      CREATE OBJECT go_container_tree
+        EXPORTING
+          container_name = 'CONTAINER_TREE'.  " Ez legyen az új konténer nevét tartalmazó képernyőelem
+    ENDIF.
 
+    "hierarchia beállítása
+    DATA:    ls_hierarchy TYPE treev_hhdr.
+    ls_hierarchy-heading   = 'Beszerzési rendelések'. " Ez jelenik meg a hierarchia tetején
+    ls_hierarchy-tooltip   = 'Beszerzési rendelés és tételei'.
+    ls_hierarchy-width     = 45.
+    ls_hierarchy-width_pix = ''.
 
-  CALL FUNCTION 'LVC_FIELDCATALOG_MERGE'
-    EXPORTING
-      i_structure_name       = 'ZDEV7_EKPO'        " vagy ZDEV7_EKKO
-      i_client_never_display = 'X'           " opcionális
-    CHANGING
-      ct_fieldcat            = lt_fieldcat
-    EXCEPTIONS
-      inconsistent_interface = 1
-      program_error          = 2
-      OTHERS                 = 3.
-
-  IF sy-subrc <> 0.
-    MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
-            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+    CREATE OBJECT go_tree
+      EXPORTING
+        parent              = go_container_tree
+        node_selection_mode = cl_gui_column_tree=>node_sel_mode_single
+        i_fcat_complete     = ''
+      EXCEPTIONS
+        OTHERS              = 1.
+    IF sy-subrc <> 0.
+      " Hiba esetén hibaüzenet, log, stb.
+    ENDIF.
   ENDIF.
-
-*  CALL METHOD cl_salv_controller_metadata=>get_lvc_fieldcatalog
-*    EXPORTING
-*      i_structure_name = 'ZDEV7_EKPO'     " vagy ZDEV7_EKKO, amit épp használsz
-*    CHANGING
-*      ct_fieldcatalog  = lt_fieldcat.
 
   CALL METHOD go_tree->set_table_for_first_display
     EXPORTING
       i_structure_name    = 'ZDEV7_EKPO'
-      is_hierarchy_header = ls_hierarchy_header
+      is_hierarchy_header = ls_hierarchy
     CHANGING
       it_outtab           = lt_ekpo
-*     it_filter           =
       it_fieldcatalog     = lt_fieldcat.
+
+ENDFORM.
+*------------------------------------------------------------------------RS_TREE_CONSTRUCT módszer------------------------------------------------------------
+FORM prepare_tree_data.
+
+  DATA: lv_id        TYPE lvc_nkey,
+        lv_parent_id TYPE lvc_nkey,
+        lv_counter   TYPE i VALUE 0,
+        ls_data      TYPE zdev7_ekkoekpo.
+  DATA lv_text TYPE char75 .
+  DATA(lv_text_item) = ''.
+
+  CLEAR gt_node.
+
+  LOOP AT it_zdev7_ekkoekpo_hierseq INTO ls_data.
+
+    " Új rendelés esetén új parent node
+
+    READ TABLE it_zdev7_ekkoekpo_hierseq INTO DATA(ls_header)
+         WITH KEY ebeln = ls_data-ebeln.
+
+    lv_counter += 1.
+    lv_id = lv_counter.
+    lv_parent_id = lv_id. " ezt tároljuk, hogy a tételeket alá rakjuk
+
+    CLEAR gs_node.
+    gs_node-id = lv_id.
+    gs_node-text = |{ ls_header-ebeln } – { ls_header-bukrs } / { ls_header-bsart } / { ls_header-aedat }|.
+    gs_node-tlength = '50'.
+    gs_node-color = '05'.
+    gs_node-tlevel = 1.
+    gs_node-type = 'S' .
+    gs_node-parent = '' .
+
+    APPEND gs_node TO gt_node.
+    " Tétel mint child node
+    lv_counter += 1.
+    lv_id = lv_counter.
+
+    CLEAR gs_node.
+    gs_node-id = lv_id.
+    gs_node-parent = lv_parent_id.
+    gs_node-text = |Tétel { ls_data-ebelp } – { ls_data-matnr } – { ls_data-menge } { ls_data-meins } – { ls_data-netwr } |.
+    gs_node-tlength = '50'.
+    gs_node-color = '04'.
+    gs_node-tlevel = 2.
+    gs_node-type = 'C'. " Child node
+    APPEND gs_node TO gt_node.
+  ENDLOOP.
+ENDFORM.
+
+FORM build_tree_structure.
+
+  CALL FUNCTION 'RS_TREE_CONSTRUCT'
+    EXPORTING
+      insert_id          = '000000'
+    TABLES
+      nodetab            = gt_node
+    EXCEPTIONS
+      tree_failure       = 1
+      id_not_found       = 2
+      wrong_relationship = 3
+      OTHERS             = 4.
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+  CALL FUNCTION 'RS_TREE_LIST_DISPLAY'
+    EXPORTING
+      callback_program = sy-repid.
 
 ENDFORM.
 *--------------------------------------------------------------------------------------INCLUDE-OK----------------------------------------------------------------------------------
