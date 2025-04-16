@@ -43,7 +43,6 @@ CONTROLS: TETELADATOK TYPE TABLEVIEW USING SCREEN 400. " ki kellett ide hozni, m
 *----------------------------------------------------------------------SUBROUTINES---------------------------------------------------------------------------------
 
 FORM read_data.
-    " visszaadja a szelekciónál beírt ebeln-t a 200-as screenen
     IF p_ebeln IS INITIAL.
       MESSAGE 'Add meg a rendelésszámot (EBELN)!' TYPE 'S'.
       RETURN.
