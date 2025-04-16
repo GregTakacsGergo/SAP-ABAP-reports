@@ -907,14 +907,28 @@ PROCESS AFTER INPUT.
 
   CASE sy-ucomm.
     WHEN 'MEHET'.
-      IF rb_alv = 'X'.
-        PERFORM fetch_data_zdev7ekkoekpo CHANGING  gt_outtab
-                                                   it_zdev7_ekkoekpo_load_from.
-        CALL SCREEN 101.
-      ELSEIF rb_upl = 'X'.
-        PERFORM upload_zdev7ekkoekpo_o USING it_zdev7_ekkoekpo_origin.
-        MESSAGE 'Szelekció szerint feltöltve a zdev7_ekkoekpo_o db-tábla.' TYPE 'I'.
-      ENDIF.
-
+        IF rb_alv = 'X'.
+          PERFORM fetch_data_zdev7ekkoekpo CHANGING  gt_outtab
+                                                     it_zdev7_ekkoekpo_load_from.
+          CALL SCREEN 101.
+  
+        ELSEIF rb_upl = 'X'.
+          PERFORM upload_zdev7ekkoekpo_o USING it_zdev7_ekkoekpo_origin.
+          MESSAGE 'Szelekció szerint feltöltve a zdev7_ekkoekpo_o db-tábla.' TYPE 'I'.
+  
+  
+        ELSEIF rb_hier = 'X'.
+          PERFORM get_data_for_hierseq.
+          PERFORM display_hierseq_alv_simple.
+          "CALL SCREEN 103.
+  
+        ELSEIF rb_hier2 = 'X'.
+          PERFORM get_data_for_hierseq.
+          PERFORM prepare_tree_data.
+          PERFORM build_tree_structure.
+          "CALL SCREEN 104.
+        ELSEIF rb_hier3 = 'X'.
+          PERFORM salv_tree.
+  
   ENDCASE.
 ENDMODULE.
