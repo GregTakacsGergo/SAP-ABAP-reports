@@ -565,6 +565,96 @@ FORM build_tree_structure.
       callback_program = sy-repid.
 
 ENDFORM.
+
+"------------------------------------------------------------------------CL_SALV_TREE módszer------------------------------------------------------------
+FORM salv_tree.
+  DATA: it_data_tree  TYPE TABLE OF zdev7_ekkoekpo,
+        it_data_tree2 TYPE TABLE OF zdev7_ekkoekpo.
+  "  FIELD-SYMBOLS:     <wa_data>      TYpe zdev7_ekkoekpo.
+  DATA lv_parent_key TYPE salv_de_node_key.
+  DATA lv_text TYPE lvc_value.
+  DATA lv_parent_text TYPE lvc_value.
+  DATA lv_child_text TYPE lvc_value.
+
+  DATA: obj_tree     TYPE REF TO cl_salv_tree,
+        obj_nodes    TYPE REF TO cl_salv_nodes,
+        obj_node     TYPE REF TO cl_salv_node,
+        obj_settings TYPE REF TO cl_salv_tree_settings.
+
+
+  TRY.
+      CALL METHOD cl_salv_tree=>factory
+        IMPORTING
+          r_salv_tree = obj_tree
+        CHANGING
+          t_table     = it_data_tree.
+    CATCH cx_salv_error." INTO DATA(lx_salv).
+      "      MESSAGE lx_salv->get_text( ) TYPE 'E'.
+
+  ENDTRY.
+
+  IF obj_tree IS INITIAL.
+    MESSAGE 'Nem sikerült létrehozni a SALV Tree-t' TYPE 'E'.
+    RETURN.
+  ENDIF.
+
+  obj_settings = obj_tree->get_tree_settings( ).
+
+  obj_settings->set_header( 'ALV Tree Samples' ).
+  obj_settings->set_hierarchy_header( 'Megrendelése' ).
+  obj_settings->set_hierarchy_tooltip( 'EKKO/EKPO' ).
+  obj_settings->set_hierarchy_size( 20 ).
+
+  obj_nodes = obj_tree->get_nodes( ).
+  IF 1 = 2.
+    DO 5 TIMES.
+      obj_node = obj_nodes->add_node( related_node = ''
+                                      text = 'Parent 1'
+                                      relationship = ' ' ).
+
+      lv_parent_key = obj_node->get_key( ).
+      obj_node = obj_nodes->add_node( related_node = lv_parent_key
+                                      text = 'CHILD 1'
+                                      relationship = cl_gui_column_tree=>relat_first_child ).
+
+    ENDDO.
+  ENDIF.
+  "feltöltjük az it_data_tree2-t
+  SELECT a~ebeln, a~bukrs, a~bstyp,
+       a~bsart, a~aedat,
+       b~ebelp,
+       b~txz01, b~matnr, b~ematn, b~bukrs AS bukrs2,
+       b~werks, b~lgort, b~matkl, b~infnr, b~idnlf,
+       b~ktmng, b~menge, b~meins, b~netwr
+    INTO CORRESPONDING FIELDS OF TABLE @it_data_tree2
+    FROM ekko AS a
+    INNER JOIN ekpo AS b ON a~ebeln = b~ebeln
+    WHERE     a~ebeln IN @gt_ebeln
+          AND b~ebelp IN @gt_ebelp
+          AND a~bukrs IN @gt_bukrs
+          AND a~bstyp IN @gt_bstyp
+          AND a~bsart IN @gt_bsart.
+
+  LOOP AT it_data_tree2 INTO DATA(wa_data).
+    CONCATENATE 'Rendelés:' wa_data-ebeln INTO lv_text SEPARATED BY space.
+
+    ON CHANGE OF wa_data-ebeln.
+      obj_node = obj_nodes->add_node( related_node = ''
+                                        text = lv_text
+                                        "data_row = wa_data
+                                        relationship = '' ).
+      DATA(lv_order_key) = obj_node->get_key( ).
+    ENDON.
+
+    CONCATENATE 'Tétel:' wa_data-ebelp INTO lv_text SEPARATED BY space.
+    obj_node = obj_nodes->add_node( related_node = lv_order_key
+                                      text = lv_text
+                                      data_row = wa_data
+                                      relationship = cl_gui_column_tree=>relat_first_child ).
+  ENDLOOP.
+  obj_tree->display( ).
+
+ENDFORM.
 *--------------------------------------------------------------------------------------INCLUDE-OK----------------------------------------------------------------------------------
 
 INCLUDE zaft_sela_b_mp_1_status_010o01.
