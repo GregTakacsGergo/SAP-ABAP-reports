@@ -19,10 +19,11 @@
             ]
         },
         "dataSources": {
-            "<dataSourceAlias>": {
-                "uri": "<uri>",
+            "invoiceRemote": {
+                "uri": "/odata/",
+                "type": "OData",
                 "settings": {
-                    "localUri": "<localUri>"
+                    "odataVersion": "2.0"
                 }
             }
         }
@@ -73,15 +74,18 @@
                 "type": "sap.ui.model.resource.ResourceModel",
                 "settings": {
                     "bundleName": "sap.ui.demo.walkthrough.i18n.i18n",
-                    "suppoertedLocales": [""],
+                    "supportedLocales": [""],
                     "fallbackLocale": ""
-                },
-                "uri": "<uriRelativeToManifest>"
+                }
             },
-            "": {
-                "dataSource": "<dataSourceAlias>",
-                "settings": {}
-            }
+            "invoice": {
+                "type": "sap.ui.model.odata.v2.ODataModel",
+                "dataSource": "invoiceRemote",
+                "settings": {
+                    "useBatch": true,
+                    "defaultBindingMode": "TwoWay"
+                }
+            }          
         },
         "rootView": {
             "viewName": "sap.ui.demo.walkthrough.view.App",
