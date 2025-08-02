@@ -20,6 +20,10 @@ sap.ui.define([
             };
             var oModel = new JSONModel(oData);
             this.setModel(oModel);
+            var oViewModel = new JSONModel({
+                currency: "EUR"
+            });
+            this.setModel(oViewModel, "view");
 
             // set dialog
             this._helloDialog = new HelloDialog(this.getRootControl());
